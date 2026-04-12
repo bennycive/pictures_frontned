@@ -4,6 +4,7 @@ import { TrendingUp, Image } from 'lucide-react';
 import { auctionsApi } from '../../api';
 import type { Auction } from '../../api/types';
 import { Navbar } from '../../components/layout/Navbar';
+import { Footer } from '../../components/layout/Footer';
 import { StatusBadge } from '../../components/ui/Badge';
 import { Spinner } from '../../components/ui/Spinner';
 
@@ -58,6 +59,7 @@ export function AuctionsPublicPage() {
           </div>
         )}
       </div>
+      <Footer />
     </div>
   );
 }

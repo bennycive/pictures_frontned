@@ -5,6 +5,7 @@ import { artworksApi, cartApi, auctionsApi } from '../../api';
 import type { Artwork, Auction } from '../../api/types';
 import { useCurrencies } from '../../hooks/useCurrencies';
 import { Navbar } from '../../components/layout/Navbar';
+import { Footer } from '../../components/layout/Footer';
 import { Badge, StatusBadge } from '../../components/ui/Badge';
 import { useToast } from '../../components/ui/Toast';
 import { useAuth } from '../../context/AuthContext';
@@ -243,6 +244,7 @@ export function ArtworkDetailPage() {
           </Link>
         </div>
       </div>
+      <Footer />
     </div>
   );
 }

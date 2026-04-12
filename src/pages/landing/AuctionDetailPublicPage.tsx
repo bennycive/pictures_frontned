@@ -4,6 +4,7 @@ import { ArrowLeft, Gavel, TrendingUp, Clock, LogIn, Image, Wifi, WifiOff } from
 import { auctionsApi } from '../../api';
 import type { Auction } from '../../api/types';
 import { Navbar } from '../../components/layout/Navbar';
+import { Footer } from '../../components/layout/Footer';
 import { StatusBadge } from '../../components/ui/Badge';
 import { Modal } from '../../components/ui/Modal';
 import { useToast } from '../../components/ui/Toast';
@@ -318,6 +319,7 @@ export function AuctionDetailPublicPage() {
           </div>
         </form>
       </Modal>
+      <Footer />
     </div>
   );
 }

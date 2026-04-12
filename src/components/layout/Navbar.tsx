@@ -3,22 +3,37 @@ import { ShoppingCart, LogOut, LayoutDashboard, Menu, X, Sun, Moon } from 'lucid
 import { useAuth } from '../../context/AuthContext';
 import { useAuthModal } from '../../context/AuthModalContext';
 import { useTheme } from '../../context/ThemeContext';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
-export function Navbar() {
+interface NavbarProps {
+  scrollAware?: boolean;
+}
+
+export function Navbar({ scrollAware = false }: NavbarProps) {
   const { user, logout } = useAuth();
   const { openAuthModal } = useAuthModal();
   const { theme, toggle } = useTheme();
   const navigate = useNavigate();
   const [menuOpen, setMenuOpen] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
+
+  useEffect(() => {
+    if (!scrollAware) return;
+    const onScroll = () => setScrolled(window.scrollY > 80);
+    window.addEventListener('scroll', onScroll, { passive: true });
+    onScroll();
+    return () => window.removeEventListener('scroll', onScroll);
+  }, [scrollAware]);
 
   const handleLogout = async () => {
     await logout();
     navigate('/');
   };
 
+  const isTransparent = scrollAware && !scrolled;
+
   return (
-    <nav className="bg-earth-900 text-white sticky top-0 z-40 shadow-lg">
+    <nav className={`text-white sticky top-0 z-40 transition-all duration-300 ${isTransparent ? 'bg-transparent shadow-none' : 'bg-earth-900 shadow-lg'}`}>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
@@ -29,8 +44,11 @@ export function Navbar() {
 
           {/* Desktop Nav */}
           <div className="hidden md:flex items-center gap-6 text-sm">
+            <Link to="/" className="hover:text-primary-300 transition-colors">Home</Link>
             <Link to="/artworks" className="hover:text-primary-300 transition-colors">Artworks</Link>
             <Link to="/auctions" className="hover:text-primary-300 transition-colors">Auctions</Link>
+            <Link to="/about" className="hover:text-primary-300 transition-colors">About</Link>
+            <Link to="/contact" className="hover:text-primary-300 transition-colors">Contact</Link>
           </div>
 
           {/* Actions */}
@@ -86,8 +104,11 @@ export function Navbar() {
       {/* Mobile menu */}
       {menuOpen && (
         <div className="md:hidden bg-earth-800 border-t border-earth-700 px-4 py-3 flex flex-col gap-3 text-sm">
+          <Link to="/" onClick={() => setMenuOpen(false)} className="hover:text-primary-300">Home</Link>
           <Link to="/artworks" onClick={() => setMenuOpen(false)} className="hover:text-primary-300">Artworks</Link>
           <Link to="/auctions" onClick={() => setMenuOpen(false)} className="hover:text-primary-300">Auctions</Link>
+          <Link to="/about" onClick={() => setMenuOpen(false)} className="hover:text-primary-300">About</Link>
+          <Link to="/contact" onClick={() => setMenuOpen(false)} className="hover:text-primary-300">Contact</Link>
           {user ? (
             <>
               <Link to="/dashboard" onClick={() => setMenuOpen(false)} className="hover:text-primary-300">Dashboard</Link>

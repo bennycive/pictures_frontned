@@ -2,25 +2,9 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
   ArrowRight, Gavel, Image, Shield, Globe, ChevronRight,
-  Clock, TrendingUp, Tag, Mail, Sparkles
+  Clock, TrendingUp, Tag, Sparkles
 } from 'lucide-react';
-
-/* ─── Inline brand icons (lucide-react dropped these) ─────────── */
-const IconX = () => (
-  <svg viewBox="0 0 24 24" fill="currentColor" width="15" height="15">
-    <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.746l7.73-8.835L1.254 2.25H8.08l4.26 5.632 5.903-5.632Zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
-  </svg>
-);
-const IconInstagram = () => (
-  <svg viewBox="0 0 24 24" fill="currentColor" width="15" height="15">
-    <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z" />
-  </svg>
-);
-const IconFacebook = () => (
-  <svg viewBox="0 0 24 24" fill="currentColor" width="15" height="15">
-    <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" />
-  </svg>
-);
+import { Footer } from '../../components/layout/Footer';
 import { artworksApi, auctionsApi, categoriesApi } from '../../api';
 import type { Artwork, Auction, Category } from '../../api/types';
 import { Navbar } from '../../components/layout/Navbar';
@@ -134,10 +118,9 @@ export function LandingPage() {
   const [heroArtworks, setHeroArtworks] = useState<Artwork[]>([]);
   const [auctions, setAuctions] = useState<Auction[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
-  const [currency, setCurrency] = useState('USD');
+  const [currency, setCurrency] = useState(() => localStorage.getItem('afristudio-currency') || 'USD');
   const [loading, setLoading] = useState(true);
   const [artworksLoading, setArtworksLoading] = useState(false);
-  const [heroLoaded, setHeroLoaded] = useState(false);
   const { currencies } = useCurrencies();
 
   // Hero images fetched immediately on mount — no currency param, just need image_url
@@ -145,10 +128,9 @@ export function LandingPage() {
     artworksApi.list()
       .then(res => {
         const imgs = (res.data.results || []).filter((a: Artwork) => a.image_url);
-        setHeroArtworks(imgs.slice(0, 9));
-        setHeroLoaded(true);
+        setHeroArtworks(imgs.slice(0, 1));
       })
-      .catch(() => setHeroLoaded(true));
+      .catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -158,6 +140,9 @@ export function LandingPage() {
         if (c.status === 'fulfilled') setCategories((c.value.data.results || []).slice(0, 8));
       }).finally(() => setLoading(false));
   }, []);
+
+  // Persist selected currency
+  useEffect(() => { localStorage.setItem('afristudio-currency', currency); }, [currency]);
 
   // Featured artworks re-fetch when currency changes
   useEffect(() => {
@@ -170,65 +155,29 @@ export function LandingPage() {
 
   const liveAuctions = auctions.filter(a => a.status === 'live');
 
-  // Fill up to 9 tiles — repeat if fewer than 9 artworks available
-  const TILE_COUNT = 9;
-  const heroTiles = heroArtworks.length > 0
-    ? Array.from({ length: TILE_COUNT }, (_, i) => heroArtworks[i % heroArtworks.length])
-    : [];
+  // First artwork image for the hero
+  const heroImage = heroArtworks[0]?.image_url ?? null;
 
   return (
     <div className="min-h-screen bg-earth-50 dark:bg-earth-950 transition-colors duration-300">
-      <Navbar />
+      <Navbar scrollAware />
 
       {/* ── HERO ─────────────────────────────────────────────────── */}
-      <section className="hero-grain relative h-screen min-h-[600px] max-h-[1000px] flex items-center overflow-hidden bg-earth-950">
-
-        {/* ── Artwork mosaic background ── */}
-        <div className="absolute inset-0 grid grid-cols-3 grid-rows-3">
-          {heroTiles.length > 0
-            ? heroTiles.map((a, i) => (
-                <div
-                  key={`${a.uuid}-${i}`}
-                  className="w-full h-full overflow-hidden"
-                >
-                  <img
-                    src={a.image_url!}
-                    alt=""
-                    loading={i < 3 ? 'eager' : 'lazy'}
-                    className="w-full h-full object-cover"
-                    style={{
-                      filter: 'brightness(0.32) saturate(0.55)',
-                      transform: 'scale(1.05)',
-                      animation: `kenBurns ${18 + i * 2}s ease-in-out infinite alternate`,
-                      animationDelay: `${i * -2.5}s`,
-                    }}
-                  />
-                </div>
-              ))
-            : Array.from({ length: TILE_COUNT }).map((_, i) => (
-                <div
-                  key={i}
-                  className="w-full h-full"
-                  style={{
-                    background: i % 2 === 0
-                      ? 'linear-gradient(135deg, #1a0e08, #2a1c12)'
-                      : 'linear-gradient(135deg, #120a04, #1e1208)',
-                    animation: heroLoaded ? undefined : 'pulse 2s ease-in-out infinite',
-                  }}
-                />
-              ))
-          }
-        </div>
-
-        {/* Gradient overlays for text readability */}
-        <div className="absolute inset-0 bg-gradient-to-r from-earth-950/98 via-earth-950/80 to-earth-950/20" />
-        <div className="absolute inset-0 bg-gradient-to-t from-earth-950/70 via-transparent to-earth-950/30" />
-
+      <section
+        className="hero-grain relative -mt-16 h-screen min-h-[600px] max-h-[1000px] flex items-center overflow-hidden"
+        style={{
+          backgroundImage: heroImage
+            ? `linear-gradient(105deg, rgba(10,5,2,0.93) 0%, rgba(10,5,2,0.70) 45%, rgba(10,5,2,0.25) 100%), url(${heroImage})`
+            : 'linear-gradient(105deg, #0a0502 0%, #1a0e08 60%, #2a1c12 100%)',
+          backgroundSize: 'cover',
+          backgroundPosition: 'center',
+        }}
+      >
         {/* Warm amber glow behind text */}
         <div
           className="absolute left-0 top-1/2 -translate-y-1/2 w-[600px] h-[600px] rounded-full pointer-events-none"
           style={{
-            background: 'radial-gradient(circle, rgba(180,100,20,0.12) 0%, transparent 70%)',
+            background: 'radial-gradient(circle, rgba(180,100,20,0.14) 0%, transparent 70%)',
             filter: 'blur(40px)',
           }}
         />
@@ -469,114 +418,7 @@ export function LandingPage() {
         </div>
       </section>
 
-      {/* ── FOOTER ────────────────────────────────────────────────── */}
-      <footer className="bg-earth-950 dark:bg-black text-earth-400">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-16 pb-8">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-10 mb-12">
-            {/* Brand column */}
-            <div className="md:col-span-1">
-              <Link to="/" className="flex items-center gap-2.5 mb-4">
-                <div className="w-9 h-9 bg-gradient-to-br from-primary-500 to-primary-700 rounded-xl flex items-center justify-center font-bold text-white font-display text-sm shadow-lg">
-                  AS
-                </div>
-                <span className="text-earth-100 font-display font-bold text-lg tracking-wide">AfriStudio</span>
-              </Link>
-              <p className="text-sm text-earth-500 leading-relaxed mb-5">
-                Africa's premier platform for discovering, collecting, and auctioning authentic African digital art.
-              </p>
-              <div className="flex gap-3">
-                {[
-                  { icon: IconX, href: '#', label: 'X (Twitter)' },
-                  { icon: IconInstagram, href: '#', label: 'Instagram' },
-                  { icon: IconFacebook, href: '#', label: 'Facebook' },
-                ].map(s => (
-                  <a
-                    key={s.label}
-                    href={s.href}
-                    aria-label={s.label}
-                    className="w-9 h-9 bg-earth-800 hover:bg-primary-600/30 hover:text-primary-400 border border-earth-700 hover:border-primary-600/50 rounded-lg flex items-center justify-center transition-all duration-200"
-                  >
-                    <s.icon />
-                  </a>
-                ))}
-              </div>
-            </div>
-
-            {/* Quick links */}
-            <div>
-              <h4 className="text-earth-200 font-semibold text-sm mb-4 uppercase tracking-widest">Explore</h4>
-              <ul className="space-y-2.5">
-                {[
-                  { label: 'Artworks', to: '/artworks' },
-                  { label: 'Auctions', to: '/auctions' },
-                  { label: 'Categories', to: '/artworks' },
-                  { label: 'Live Auctions', to: '/auctions' },
-                ].map(l => (
-                  <li key={l.label}>
-                    <Link to={l.to} className="text-sm text-earth-500 hover:text-primary-400 transition-colors">
-                      {l.label}
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            </div>
-
-            {/* Account */}
-            <div>
-              <h4 className="text-earth-200 font-semibold text-sm mb-4 uppercase tracking-widest">Account</h4>
-              <ul className="space-y-2.5">
-                {[
-                  { label: 'Sign In', to: '/login' },
-                  { label: 'Register', to: '/register' },
-                  { label: 'Dashboard', to: '/dashboard' },
-                  { label: 'My Orders', to: '/dashboard/orders' },
-                  { label: 'My Wallet', to: '/dashboard/wallet' },
-                ].map(l => (
-                  <li key={l.label}>
-                    <Link to={l.to} className="text-sm text-earth-500 hover:text-primary-400 transition-colors">
-                      {l.label}
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            </div>
-
-            {/* Newsletter */}
-            <div>
-              <h4 className="text-earth-200 font-semibold text-sm mb-4 uppercase tracking-widest">Stay Updated</h4>
-              <p className="text-sm text-earth-500 mb-4 leading-relaxed">
-                Get notified about new auctions and featured artists.
-              </p>
-              <div className="flex gap-2">
-                <input
-                  type="email"
-                  placeholder="your@email.com"
-                  className="flex-1 min-w-0 bg-earth-800 border border-earth-700 rounded-lg px-3 py-2 text-sm text-earth-200 placeholder-earth-600 focus:outline-none focus:ring-1 focus:ring-primary-500 focus:border-primary-500"
-                />
-                <button
-                  type="button"
-                  className="shrink-0 w-9 h-9 bg-primary-600 hover:bg-primary-500 rounded-lg flex items-center justify-center transition-colors"
-                >
-                  <Mail size={15} className="text-white" />
-                </button>
-              </div>
-              <p className="text-xs text-earth-600 mt-2">No spam, unsubscribe any time.</p>
-            </div>
-          </div>
-
-          {/* Bottom bar */}
-          <div className="border-t border-earth-800 pt-8 flex flex-col sm:flex-row items-center justify-between gap-4">
-            <p className="text-xs text-earth-600">
-              © {new Date().getFullYear()} AfriStudio. All rights reserved.
-            </p>
-            <div className="flex gap-6 text-xs">
-              {['Privacy Policy', 'Terms of Service', 'Cookie Policy'].map(l => (
-                <a key={l} href="#" className="text-earth-600 hover:text-earth-400 transition-colors">{l}</a>
-              ))}
-            </div>
-          </div>
-        </div>
-      </footer>
+      <Footer />
     </div>
   );
 }

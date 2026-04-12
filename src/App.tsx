@@ -12,6 +12,8 @@ import { ArtworksPage } from './pages/landing/ArtworksPage';
 import { ArtworkDetailPage } from './pages/landing/ArtworkDetailPage';
 import { AuctionsPublicPage } from './pages/landing/AuctionsPublicPage';
 import { AuctionDetailPublicPage } from './pages/landing/AuctionDetailPublicPage';
+import { AboutPage } from './pages/landing/AboutPage';
+import { ContactPage } from './pages/landing/ContactPage';
 
 // Auth pages
 import { LoginPage } from './pages/auth/LoginPage';
@@ -55,6 +57,8 @@ export default function App() {
             <Route path="/artworks/:uuid" element={<ArtworkDetailPage />} />
             <Route path="/auctions" element={<AuctionsPublicPage />} />
             <Route path="/auctions/:uuid" element={<AuctionDetailPublicPage />} />
+            <Route path="/about" element={<AboutPage />} />
+            <Route path="/contact" element={<ContactPage />} />
 
             {/* Auth */}
             <Route path="/login" element={<GuestRoute><LoginPage /></GuestRoute>} />

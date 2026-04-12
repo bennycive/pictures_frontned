@@ -5,6 +5,7 @@ import { artworksApi, categoriesApi, cartApi } from '../../api';
 import type { Artwork, Category } from '../../api/types';
 import { useCurrencies } from '../../hooks/useCurrencies';
 import { Navbar } from '../../components/layout/Navbar';
+import { Footer } from '../../components/layout/Footer';
 import { Spinner } from '../../components/ui/Spinner';
 import { Badge } from '../../components/ui/Badge';
 import { useToast } from '../../components/ui/Toast';
@@ -23,7 +24,7 @@ export function ArtworksPage() {
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
   const [addingToCart, setAddingToCart] = useState<string | null>(null);
-  const [currency, setCurrency] = useState('USD');
+  const [currency, setCurrency] = useState(() => localStorage.getItem('afristudio-currency') || 'USD');
   const { currencies } = useCurrencies();
   const categoryFilter = searchParams.get('category') || '';
 
@@ -42,6 +43,7 @@ export function ArtworksPage() {
   };
 
   useEffect(() => { load(); }, [search, page, currency, categoryFilter]);
+  useEffect(() => { localStorage.setItem('afristudio-currency', currency); }, [currency]);
 
   const doAddToCart = async (uuid: string) => {
     setAddingToCart(uuid);
@@ -182,6 +184,7 @@ export function ArtworksPage() {
           </div>
         </div>
       </div>
+      <Footer />
     </div>
   );
 }
