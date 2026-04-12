@@ -1,12 +1,14 @@
 import { Link, useNavigate } from 'react-router-dom';
-import { ShoppingCart, LogOut, LayoutDashboard, Menu, X } from 'lucide-react';
+import { ShoppingCart, LogOut, LayoutDashboard, Menu, X, Sun, Moon } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useAuthModal } from '../../context/AuthModalContext';
+import { useTheme } from '../../context/ThemeContext';
 import { useState } from 'react';
 
 export function Navbar() {
   const { user, logout } = useAuth();
   const { openAuthModal } = useAuthModal();
+  const { theme, toggle } = useTheme();
   const navigate = useNavigate();
   const [menuOpen, setMenuOpen] = useState(false);
 
@@ -32,7 +34,19 @@ export function Navbar() {
           </div>
 
           {/* Actions */}
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
+            {/* Theme toggle — always visible */}
+            <button
+              onClick={toggle}
+              className="p-2 hover:bg-earth-800 rounded-lg transition-colors"
+              title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+            >
+              {theme === 'dark'
+                ? <Sun size={18} className="text-gold-400" />
+                : <Moon size={18} className="text-earth-300" />
+              }
+            </button>
+
             {user ? (
               <>
                 <Link to="/dashboard/cart" className="p-2 hover:bg-earth-800 rounded-lg transition-colors hidden md:flex">

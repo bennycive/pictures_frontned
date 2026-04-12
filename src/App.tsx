@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import { AuthModalProvider } from './context/AuthModalContext';
 import { ToastProvider } from './components/ui/Toast';
+import { ThemeProvider } from './context/ThemeContext';
 import { ProtectedRoute, GuestRoute } from './components/layout/ProtectedRoute';
 import { DashboardLayout } from './components/layout/DashboardLayout';
 
@@ -43,6 +44,7 @@ function DashboardWrapper({ children }: { children: React.ReactNode }) {
 export default function App() {
   return (
     <BrowserRouter>
+      <ThemeProvider>
       <AuthProvider>
         <ToastProvider>
         <AuthModalProvider>
@@ -80,6 +82,7 @@ export default function App() {
         </AuthModalProvider>
         </ToastProvider>
       </AuthProvider>
+      </ThemeProvider>
     </BrowserRouter>
   );
 }

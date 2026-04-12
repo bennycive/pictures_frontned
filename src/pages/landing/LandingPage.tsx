@@ -1,47 +1,64 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowRight, Gavel, Image, Shield, Globe, ChevronRight, Clock, TrendingUp, Tag, ChevronDown } from 'lucide-react';
+import {
+  ArrowRight, Gavel, Image, Shield, Globe, ChevronRight,
+  Clock, TrendingUp, Tag, Instagram, Twitter, Facebook, Mail,
+  Sparkles
+} from 'lucide-react';
 import { artworksApi, auctionsApi, categoriesApi } from '../../api';
 import type { Artwork, Auction, Category } from '../../api/types';
-import { useCurrencies } from '../../hooks/useCurrencies';
 import { Navbar } from '../../components/layout/Navbar';
 import { StatusBadge } from '../../components/ui/Badge';
 import { Spinner } from '../../components/ui/Spinner';
+import { useCurrencies } from '../../hooks/useCurrencies';
 
+/* ─── Artwork card ─────────────────────────────────────────────── */
 function ArtworkCard({ artwork }: { artwork: Artwork }) {
   return (
-    <Link to={`/artworks/${artwork.uuid}`} className="group bg-white rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-shadow border border-earth-100">
-      <div className="aspect-[4/3] bg-earth-100 overflow-hidden">
+    <Link
+      to={`/artworks/${artwork.uuid}`}
+      className="group relative bg-white dark:bg-earth-800 rounded-2xl overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 border border-earth-100 dark:border-earth-700"
+    >
+      <div className="aspect-[4/3] bg-earth-100 dark:bg-earth-700 overflow-hidden">
         {artwork.image_url ? (
-          <img src={artwork.image_url} alt={artwork.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+          <img
+            src={artwork.image_url}
+            alt={artwork.name}
+            className="w-full h-full object-cover group-hover:scale-108 transition-transform duration-500"
+            style={{ transformOrigin: 'center' }}
+          />
         ) : (
           <div className="w-full h-full flex items-center justify-center">
             <Image size={40} className="text-earth-300" />
           </div>
         )}
       </div>
+      {/* Hover overlay */}
+      <div className="absolute inset-0 bg-gradient-to-t from-earth-950/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
       <div className="p-4">
-        <p className="text-xs text-primary-600 font-medium mb-1">{artwork.category?.name}</p>
-        <h3 className="font-semibold text-earth-900 truncate">{artwork.name}</h3>
-        <p className="text-sm text-earth-500 mt-1">{artwork.dimensions}</p>
+        <p className="text-xs text-primary-600 font-semibold mb-1 uppercase tracking-wide">{artwork.category?.name}</p>
+        <h3 className="font-display font-semibold text-earth-900 dark:text-earth-100 truncate">{artwork.name}</h3>
+        <p className="text-xs text-earth-400 mt-0.5">{artwork.dimensions}</p>
         <div className="mt-3 flex items-center justify-between">
-          <span className="font-bold text-primary-700">
+          <span className="font-bold text-primary-600 dark:text-primary-400 text-sm">
             {artwork.pricing?.formatted ?? '—'}
           </span>
-          {artwork.is_sold && <span className="text-xs bg-red-100 text-red-700 px-2 py-0.5 rounded-full">Sold</span>}
+          {artwork.is_sold && (
+            <span className="text-xs bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400 px-2 py-0.5 rounded-full font-medium">Sold</span>
+          )}
         </div>
       </div>
     </Link>
   );
 }
 
+/* ─── Auction card ─────────────────────────────────────────────── */
 function AuctionCard({ auction }: { auction: Auction }) {
   const [timeLeft, setTimeLeft] = useState('');
   useEffect(() => {
     const update = () => {
       if (auction.status !== 'live') { setTimeLeft(''); return; }
-      const end = new Date(auction.end_time).getTime();
-      const diff = end - Date.now();
+      const diff = new Date(auction.end_time).getTime() - Date.now();
       if (diff <= 0) { setTimeLeft('Ended'); return; }
       const h = Math.floor(diff / 3600000);
       const m = Math.floor((diff % 3600000) / 60000);
@@ -54,42 +71,49 @@ function AuctionCard({ auction }: { auction: Auction }) {
   }, [auction]);
 
   return (
-    <Link to={`/auctions/${auction.uuid}`} className="group bg-white rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-shadow border border-earth-100">
-      <div className="aspect-[4/3] bg-earth-100 overflow-hidden relative">
+    <Link
+      to={`/auctions/${auction.uuid}`}
+      className="group relative bg-white dark:bg-earth-800 rounded-2xl overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 border border-earth-100 dark:border-earth-700"
+    >
+      <div className="aspect-[4/3] bg-earth-100 dark:bg-earth-700 overflow-hidden relative">
         {auction.artwork_image ? (
-          <img src={auction.artwork_image} alt={auction.artwork_name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+          <img
+            src={auction.artwork_image}
+            alt={auction.artwork_name}
+            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+          />
         ) : (
-          <div className="w-full h-full flex items-center justify-center"><Image size={40} className="text-earth-300" /></div>
+          <div className="w-full h-full flex items-center justify-center">
+            <Image size={40} className="text-earth-300" />
+          </div>
         )}
-        <div className="absolute top-3 left-3">
-          <StatusBadge status={auction.status} />
-        </div>
+        <div className="absolute top-3 left-3"><StatusBadge status={auction.status} /></div>
+        {auction.status === 'live' && timeLeft && (
+          <div className="absolute bottom-3 right-3 bg-black/70 text-white text-xs font-mono px-2 py-1 rounded-lg flex items-center gap-1">
+            <Clock size={11} /> {timeLeft}
+          </div>
+        )}
       </div>
       <div className="p-4">
-        <h3 className="font-semibold text-earth-900 truncate">{auction.artwork_name}</h3>
+        <h3 className="font-display font-semibold text-earth-900 dark:text-earth-100 truncate">{auction.artwork_name}</h3>
         <div className="mt-2 flex items-center justify-between text-sm">
           <div>
-            <p className="text-earth-500">Current bid</p>
-            <p className="font-bold text-primary-700">
-              {auction.current_price ? `${auction.currency} ${auction.current_price}` : `${auction.currency} ${auction.start_price}`}
+            <p className="text-xs text-earth-400 mb-0.5">Current bid</p>
+            <p className="font-bold text-primary-600 dark:text-primary-400">
+              {auction.currency} {auction.current_price || auction.start_price}
             </p>
           </div>
-          {auction.status === 'live' && timeLeft && (
-            <div className="text-right">
-              <p className="text-earth-500 flex items-center gap-1"><Clock size={12} />Ends in</p>
-              <p className="font-semibold text-red-600 text-xs">{timeLeft}</p>
-            </div>
-          )}
-        </div>
-        <div className="mt-2 flex items-center gap-1 text-xs text-earth-400">
-          <TrendingUp size={12} />
-          {auction.total_bids} bids
+          <div className="text-right text-xs text-earth-400 flex items-center gap-1">
+            <TrendingUp size={12} className="text-earth-400" />
+            {auction.total_bids} bids
+          </div>
         </div>
       </div>
     </Link>
   );
 }
 
+/* ─── Landing Page ─────────────────────────────────────────────── */
 export function LandingPage() {
   const [artworks, setArtworks] = useState<Artwork[]>([]);
   const [auctions, setAuctions] = useState<Auction[]>([]);
@@ -99,18 +123,14 @@ export function LandingPage() {
   const [artworksLoading, setArtworksLoading] = useState(false);
   const { currencies } = useCurrencies();
 
-  // Load auctions + categories once
   useEffect(() => {
-    Promise.allSettled([
-      auctionsApi.list(),
-      categoriesApi.list(),
-    ]).then(([au, c]) => {
-      if (au.status === 'fulfilled') setAuctions((au.value.data as Auction[]).slice(0, 6));
-      if (c.status === 'fulfilled') setCategories((c.value.data.results || []).slice(0, 8));
-    }).finally(() => setLoading(false));
+    Promise.allSettled([auctionsApi.list(), categoriesApi.list()])
+      .then(([au, c]) => {
+        if (au.status === 'fulfilled') setAuctions((au.value.data as Auction[]).slice(0, 6));
+        if (c.status === 'fulfilled') setCategories((c.value.data.results || []).slice(0, 8));
+      }).finally(() => setLoading(false));
   }, []);
 
-  // Reload artworks whenever currency changes
   useEffect(() => {
     setArtworksLoading(true);
     artworksApi.list({ currency })
@@ -121,71 +141,124 @@ export function LandingPage() {
 
   const liveAuctions = auctions.filter(a => a.status === 'live');
 
+  // For the hero mosaic — use all fetched artworks or fall back to fewer tiles
+  const heroImages = artworks.filter(a => a.image_url).slice(0, 9);
+
   return (
-    <div className="min-h-screen bg-earth-50">
+    <div className="min-h-screen bg-earth-50 dark:bg-earth-950 transition-colors duration-300">
       <Navbar />
 
-      {/* Hero */}
-      <section className="relative bg-earth-900 text-white overflow-hidden">
-        <div className="absolute inset-0 opacity-20"
-          style={{ backgroundImage: 'radial-gradient(circle at 30% 50%, #d4881e 0%, transparent 60%), radial-gradient(circle at 70% 30%, #8b5e32 0%, transparent 50%)' }} />
-        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24 lg:py-32">
-          <div className="max-w-3xl">
-            <div className="inline-flex items-center gap-2 bg-primary-600/20 border border-primary-500/30 rounded-full px-4 py-1.5 text-primary-300 text-sm mb-6">
-              <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse" />
-              {liveAuctions.length} Live Auctions Now
-            </div>
-            <h1 className="text-4xl sm:text-5xl lg:text-6xl font-display font-bold leading-tight mb-6">
-              Discover & Bid on<br />
-              <span className="text-primary-400">African Digital Art</span>
+      {/* ── HERO ─────────────────────────────────────────────────── */}
+      <section className="hero-grain relative min-h-[92vh] flex items-center overflow-hidden bg-earth-950">
+
+        {/* Artwork mosaic background */}
+        <div className="absolute inset-0 grid grid-cols-3 grid-rows-3 gap-0.5">
+          {heroImages.length > 0
+            ? heroImages.map((a, i) => (
+                <div key={a.uuid} className="overflow-hidden" style={{ animationDelay: `${i * 0.15}s` }}>
+                  <img
+                    src={a.image_url!}
+                    alt=""
+                    className="w-full h-full object-cover animate-ken-burns"
+                    style={{
+                      filter: 'brightness(0.28) saturate(0.6)',
+                      animationDelay: `${i * -3}s`,
+                    }}
+                  />
+                </div>
+              ))
+            : Array.from({ length: 9 }).map((_, i) => (
+                <div key={i} className="bg-gradient-to-br from-earth-900 to-earth-950" />
+              ))
+          }
+        </div>
+
+        {/* Left-to-right gradient — makes text readable */}
+        <div className="absolute inset-0 bg-gradient-to-r from-earth-950 via-earth-950/85 to-earth-950/30" />
+        {/* Bottom vignette */}
+        <div className="absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-earth-950/80 to-transparent" />
+
+        {/* Hero content */}
+        <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24 lg:py-32 w-full">
+          <div className="max-w-2xl">
+            {/* Live badge */}
+            {liveAuctions.length > 0 && (
+              <div className="inline-flex items-center gap-2 bg-primary-600/20 border border-primary-500/40 rounded-full px-4 py-1.5 text-primary-300 text-sm mb-8 animate-fade-in">
+                <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse" />
+                {liveAuctions.length} Live Auction{liveAuctions.length !== 1 ? 's' : ''} Now
+              </div>
+            )}
+
+            <h1 className="font-display font-bold leading-[1.1] mb-6">
+              <span className="block text-5xl sm:text-6xl lg:text-7xl text-white animate-fade-up">
+                Discover &amp;
+              </span>
+              <span className="block text-5xl sm:text-6xl lg:text-7xl text-primary-400 animate-fade-up" style={{ animationDelay: '0.1s' }}>
+                Bid on African
+              </span>
+              <span className="block text-5xl sm:text-6xl lg:text-7xl text-white animate-fade-up" style={{ animationDelay: '0.2s' }}>
+                Digital Art
+              </span>
             </h1>
-            <p className="text-xl text-earth-300 mb-8 leading-relaxed">
-              AfriStudio connects collectors with Africa's finest digital artists through transparent, real-time auctions. Own a piece of African creativity.
+
+            <p className="text-lg sm:text-xl text-earth-300 mb-10 leading-relaxed max-w-xl animate-fade-up" style={{ animationDelay: '0.3s' }}>
+              AfriStudio connects collectors with Africa's finest artists through transparent,
+              real-time auctions. Own a piece of African creativity.
             </p>
-            <div className="flex flex-wrap gap-4">
-              <Link to="/auctions" className="inline-flex items-center gap-2 bg-primary-600 hover:bg-primary-500 text-white font-semibold px-6 py-3 rounded-xl transition-colors">
-                <Gavel size={20} /> Browse Auctions <ArrowRight size={16} />
+
+            <div className="flex flex-wrap gap-4 animate-fade-up" style={{ animationDelay: '0.4s' }}>
+              <Link
+                to="/auctions"
+                className="inline-flex items-center gap-2 bg-primary-600 hover:bg-primary-500 text-white font-semibold px-7 py-3.5 rounded-xl transition-all duration-200 shadow-lg hover:shadow-primary-600/30 hover:scale-105"
+              >
+                <Gavel size={18} /> Browse Auctions <ArrowRight size={15} />
               </Link>
-              <Link to="/artworks" className="inline-flex items-center gap-2 bg-white/10 hover:bg-white/20 text-white font-semibold px-6 py-3 rounded-xl transition-colors border border-white/20">
-                <Image size={20} /> View Artworks
+              <Link
+                to="/artworks"
+                className="inline-flex items-center gap-2 bg-white/10 hover:bg-white/20 backdrop-blur text-white font-semibold px-7 py-3.5 rounded-xl transition-all duration-200 border border-white/20 hover:border-white/40"
+              >
+                <Sparkles size={18} /> View Artworks
               </Link>
+            </div>
+
+            {/* Quick stats */}
+            <div className="flex flex-wrap gap-8 mt-14 animate-fade-up" style={{ animationDelay: '0.5s' }}>
+              {[
+                { n: '500+', l: 'Artworks' },
+                { n: `${categories.length}+`, l: 'Categories' },
+                { n: `${liveAuctions.length}`, l: 'Live Now' },
+                { n: '1.2K+', l: 'Collectors' },
+              ].map(s => (
+                <div key={s.l}>
+                  <p className="text-2xl font-bold text-primary-400 font-display">{s.n}</p>
+                  <p className="text-xs text-earth-400 mt-0.5 uppercase tracking-widest">{s.l}</p>
+                </div>
+              ))}
             </div>
           </div>
         </div>
-      </section>
 
-      {/* Stats */}
-      <section className="bg-primary-700 text-white py-8">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
-            {[
-              { label: 'Artworks Listed', value: '500+' },
-              { label: 'Categories', value: `${categories.length}+` },
-              { label: 'Live Auctions', value: `${liveAuctions.length}` },
-              { label: 'Happy Collectors', value: '1,200+' },
-            ].map(s => (
-              <div key={s.label}>
-                <p className="text-2xl font-bold text-primary-200">{s.value}</p>
-                <p className="text-sm text-primary-300 mt-1">{s.label}</p>
-              </div>
-            ))}
+        {/* Scroll hint */}
+        <div className="absolute bottom-8 left-1/2 -translate-x-1/2 animate-bounce opacity-40">
+          <div className="w-5 h-8 border-2 border-white rounded-full flex items-start justify-center pt-1.5">
+            <div className="w-1 h-2 bg-white rounded-full" />
           </div>
         </div>
       </section>
 
-      {/* Live Auctions */}
+      {/* ── LIVE AUCTIONS ─────────────────────────────────────────── */}
       {liveAuctions.length > 0 && (
-        <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
-          <div className="flex items-center justify-between mb-8">
+        <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
+          <div className="flex items-end justify-between mb-10">
             <div>
-              <div className="flex items-center gap-2 mb-1">
+              <div className="flex items-center gap-2 mb-2">
                 <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
-                <span className="text-sm text-green-600 font-medium">Live Now</span>
+                <span className="text-xs font-semibold text-green-600 dark:text-green-400 uppercase tracking-widest">Live Now</span>
               </div>
-              <h2 className="text-2xl font-display font-bold text-earth-900">Active Auctions</h2>
+              <h2 className="font-display text-3xl sm:text-4xl font-bold text-earth-900 dark:text-earth-100">Active Auctions</h2>
             </div>
-            <Link to="/auctions" className="flex items-center gap-1 text-primary-600 hover:text-primary-700 text-sm font-medium">
-              View all <ChevronRight size={16} />
+            <Link to="/auctions" className="hidden sm:flex items-center gap-1 text-primary-600 dark:text-primary-400 hover:text-primary-700 text-sm font-semibold group">
+              View all <ChevronRight size={16} className="group-hover:translate-x-0.5 transition-transform" />
             </Link>
           </div>
           {loading ? (
@@ -198,112 +271,254 @@ export function LandingPage() {
         </section>
       )}
 
-      {/* Featured Artworks */}
-      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
-        <div className="flex items-center justify-between mb-8">
-          <h2 className="text-2xl font-display font-bold text-earth-900">Featured Artworks</h2>
-          <div className="flex items-center gap-3">
-            {/* Currency selector */}
-            {currencies.length > 0 && (
-              <div className="relative">
-                <select
-                  value={currency}
-                  onChange={e => setCurrency(e.target.value)}
-                  className="appearance-none pl-3 pr-8 py-1.5 text-sm bg-white border border-earth-200 rounded-lg text-earth-700 focus:outline-none focus:ring-2 focus:ring-primary-300 cursor-pointer"
-                >
-                  {currencies.map(c => (
-                    <option key={c.uuid} value={c.code}>{c.code} ({c.symbol})</option>
-                  ))}
-                </select>
-                <ChevronDown size={14} className="absolute right-2 top-1/2 -translate-y-1/2 text-earth-400 pointer-events-none" />
-              </div>
-            )}
-            <Link to="/artworks" className="flex items-center gap-1 text-primary-600 hover:text-primary-700 text-sm font-medium">
-              View all <ChevronRight size={16} />
+      {/* ── FEATURED ARTWORKS ─────────────────────────────────────── */}
+      <section className="py-20 bg-white dark:bg-earth-900/50">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex items-end justify-between mb-10">
+            <div>
+              <p className="text-xs font-semibold text-primary-600 dark:text-primary-400 uppercase tracking-widest mb-2">Collection</p>
+              <h2 className="font-display text-3xl sm:text-4xl font-bold text-earth-900 dark:text-earth-100">Featured Artworks</h2>
+            </div>
+            <div className="flex items-center gap-3">
+              {/* Currency selector */}
+              {currencies.length > 0 && (
+                <div className="relative">
+                  <select
+                    value={currency}
+                    onChange={e => setCurrency(e.target.value)}
+                    className="appearance-none pl-3 pr-8 py-1.5 text-sm bg-earth-50 dark:bg-earth-800 border border-earth-200 dark:border-earth-700 rounded-lg text-earth-700 dark:text-earth-300 focus:outline-none focus:ring-2 focus:ring-primary-300 cursor-pointer"
+                  >
+                    {currencies.map(c => (
+                      <option key={c.uuid} value={c.code}>{c.code} ({c.symbol})</option>
+                    ))}
+                  </select>
+                  <ChevronRight size={12} className="absolute right-2 top-1/2 -translate-y-1/2 rotate-90 text-earth-400 pointer-events-none" />
+                </div>
+              )}
+              <Link to="/artworks" className="hidden sm:flex items-center gap-1 text-primary-600 dark:text-primary-400 hover:text-primary-700 text-sm font-semibold group">
+                View all <ChevronRight size={16} className="group-hover:translate-x-0.5 transition-transform" />
+              </Link>
+            </div>
+          </div>
+
+          {artworksLoading ? (
+            <div className="flex justify-center py-12"><Spinner size="lg" /></div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+              {artworks.map(a => <ArtworkCard key={a.uuid} artwork={a} />)}
+            </div>
+          )}
+
+          <div className="text-center mt-10 sm:hidden">
+            <Link to="/artworks" className="btn-primary inline-flex items-center gap-2">
+              Browse all artworks <ArrowRight size={16} />
             </Link>
           </div>
         </div>
-        {artworksLoading ? (
-          <div className="flex justify-center py-12"><Spinner size="lg" /></div>
-        ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            {artworks.map(a => <ArtworkCard key={a.uuid} artwork={a} />)}
-          </div>
-        )}
       </section>
 
-      {/* Categories */}
+      {/* ── CATEGORIES ────────────────────────────────────────────── */}
       {categories.length > 0 && (
-        <section className="bg-white py-16">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <h2 className="text-2xl font-display font-bold text-earth-900 mb-8 text-center">Browse by Category</h2>
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-              {categories.map(cat => (
-                <Link
-                  key={cat.uuid}
-                  to={`/artworks?category=${cat.uuid}`}
-                  className="group flex flex-col items-center p-6 bg-earth-50 hover:bg-primary-50 rounded-xl border border-earth-100 hover:border-primary-200 transition-all"
-                >
-                  <div className="w-12 h-12 bg-primary-100 group-hover:bg-primary-200 rounded-xl flex items-center justify-center mb-3 transition-colors">
-                    <Tag size={24} className="text-primary-600" />
-                  </div>
-                  <p className="font-semibold text-earth-800 text-sm text-center">{cat.name}</p>
-                  <p className="text-xs text-earth-400 mt-1">{cat.artworks_count} artworks</p>
-                </Link>
-              ))}
-            </div>
+        <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
+          <div className="text-center mb-12">
+            <p className="text-xs font-semibold text-primary-600 dark:text-primary-400 uppercase tracking-widest mb-2">Explore</p>
+            <h2 className="font-display text-3xl sm:text-4xl font-bold text-earth-900 dark:text-earth-100">Browse by Category</h2>
+          </div>
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+            {categories.map((cat, i) => (
+              <Link
+                key={cat.uuid}
+                to={`/artworks?category=${cat.uuid}`}
+                className="group relative flex flex-col items-center p-6 bg-white dark:bg-earth-800 hover:bg-primary-50 dark:hover:bg-earth-700 rounded-2xl border border-earth-100 dark:border-earth-700 hover:border-primary-200 dark:hover:border-primary-800 transition-all duration-200 hover:shadow-md hover:-translate-y-0.5"
+                style={{ animationDelay: `${i * 0.05}s` }}
+              >
+                <div className="w-12 h-12 bg-primary-100 dark:bg-primary-900/40 group-hover:bg-primary-200 dark:group-hover:bg-primary-800/60 rounded-xl flex items-center justify-center mb-3 transition-colors">
+                  <Tag size={22} className="text-primary-600 dark:text-primary-400" />
+                </div>
+                <p className="font-semibold text-earth-800 dark:text-earth-200 text-sm text-center leading-tight">{cat.name}</p>
+                <p className="text-xs text-earth-400 dark:text-earth-500 mt-1">{cat.artworks_count} artworks</p>
+              </Link>
+            ))}
           </div>
         </section>
       )}
 
-      {/* Features */}
-      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
-        <h2 className="text-2xl font-display font-bold text-earth-900 text-center mb-12">Why AfriStudio?</h2>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-          {[
-            { icon: Gavel, title: 'Real-Time Bidding', desc: 'Experience live, transparent auctions with instant bid updates and fair competition.' },
-            { icon: Shield, title: 'Secure Transactions', desc: 'Every purchase is protected with our wallet-based payment system and buyer guarantee.' },
-            { icon: Globe, title: 'African Heritage', desc: 'Curated artworks celebrating the rich diversity of African art, culture, and creativity.' },
-          ].map(f => (
-            <div key={f.title} className="text-center p-8 bg-white rounded-xl border border-earth-100">
-              <div className="w-14 h-14 bg-primary-100 rounded-xl flex items-center justify-center mx-auto mb-4">
-                <f.icon size={28} className="text-primary-600" />
+      {/* ── WHY AFRISTUDIO ────────────────────────────────────────── */}
+      <section className="bg-earth-900 dark:bg-earth-950 py-24 relative overflow-hidden">
+        {/* Decorative accent */}
+        <div className="absolute top-0 left-0 w-96 h-96 bg-primary-600/10 rounded-full -translate-x-1/2 -translate-y-1/2 blur-3xl" />
+        <div className="absolute bottom-0 right-0 w-96 h-96 bg-primary-800/10 rounded-full translate-x-1/3 translate-y-1/3 blur-3xl" />
+
+        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-14">
+            <p className="text-xs font-semibold text-primary-400 uppercase tracking-widest mb-2">Why choose us</p>
+            <h2 className="font-display text-3xl sm:text-4xl font-bold text-white">Built for Art Lovers</h2>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            {[
+              {
+                icon: Gavel,
+                title: 'Real-Time Bidding',
+                desc: 'Experience live, transparent auctions with instant bid updates via WebSocket — every bid reflected instantly across all devices.',
+              },
+              {
+                icon: Shield,
+                title: 'Secure & Trusted',
+                desc: 'Every purchase is protected with our wallet-based payment system, escrow-style transfers, and full buyer guarantee.',
+              },
+              {
+                icon: Globe,
+                title: 'African Heritage',
+                desc: 'Curated artworks celebrating the rich diversity of African art — from Nairobi to Lagos, Accra to Dar es Salaam.',
+              },
+            ].map((f, i) => (
+              <div key={f.title} className="relative p-8 bg-white/5 hover:bg-white/8 rounded-2xl border border-white/10 hover:border-primary-500/30 transition-all duration-300 hover:-translate-y-1" style={{ animationDelay: `${i * 0.1}s` }}>
+                <div className="w-14 h-14 bg-primary-600/20 rounded-xl flex items-center justify-center mb-5">
+                  <f.icon size={26} className="text-primary-400" />
+                </div>
+                <h3 className="font-display font-bold text-xl text-white mb-3">{f.title}</h3>
+                <p className="text-earth-400 text-sm leading-relaxed">{f.desc}</p>
               </div>
-              <h3 className="font-bold text-earth-900 mb-2">{f.title}</h3>
-              <p className="text-earth-500 text-sm leading-relaxed">{f.desc}</p>
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
       </section>
 
-      {/* CTA */}
-      <section className="bg-earth-900 text-white py-16">
-        <div className="max-w-3xl mx-auto text-center px-4">
-          <h2 className="text-3xl font-display font-bold mb-4">Ready to Start Collecting?</h2>
-          <p className="text-earth-300 mb-8">Join thousands of collectors and artists on Africa's premier digital art platform.</p>
+      {/* ── CTA BANNER ────────────────────────────────────────────── */}
+      <section className="relative overflow-hidden py-24">
+        <div className="absolute inset-0 bg-gradient-to-br from-primary-700 via-primary-600 to-primary-800" />
+        <div className="absolute inset-0 opacity-10"
+          style={{ backgroundImage: 'radial-gradient(circle at 20% 80%, #fff 0%, transparent 50%), radial-gradient(circle at 80% 20%, #fff 0%, transparent 50%)' }} />
+        <div className="relative max-w-3xl mx-auto text-center px-4">
+          <h2 className="font-display text-3xl sm:text-5xl font-bold text-white mb-5 leading-tight">
+            Ready to Start<br />Collecting?
+          </h2>
+          <p className="text-primary-100 text-lg mb-10 leading-relaxed">
+            Join thousands of collectors and artists on Africa's premier digital art platform.
+            Your next masterpiece is waiting.
+          </p>
           <div className="flex gap-4 justify-center flex-wrap">
-            <Link to="/register" className="inline-flex items-center gap-2 bg-primary-600 hover:bg-primary-500 text-white font-semibold px-8 py-3 rounded-xl transition-colors">
+            <Link
+              to="/register"
+              className="inline-flex items-center gap-2 bg-white text-primary-700 hover:bg-primary-50 font-bold px-8 py-3.5 rounded-xl transition-all duration-200 shadow-lg hover:shadow-xl hover:scale-105"
+            >
               Create Free Account <ArrowRight size={18} />
             </Link>
-            <Link to="/auctions" className="inline-flex items-center gap-2 border border-earth-600 hover:border-earth-400 text-earth-300 hover:text-white font-semibold px-8 py-3 rounded-xl transition-colors">
+            <Link
+              to="/auctions"
+              className="inline-flex items-center gap-2 border-2 border-white/40 hover:border-white/80 text-white font-bold px-8 py-3.5 rounded-xl transition-all duration-200 hover:bg-white/10"
+            >
               Explore Auctions
             </Link>
           </div>
         </div>
       </section>
 
-      {/* Footer */}
-      <footer className="bg-earth-950 text-earth-400 py-8">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col md:flex-row items-center justify-between gap-4">
-          <div className="flex items-center gap-2">
-            <div className="w-7 h-7 bg-primary-600 rounded-lg flex items-center justify-center text-white font-bold text-xs">AS</div>
-            <span className="text-earth-300 font-medium">AfriStudio</span>
+      {/* ── FOOTER ────────────────────────────────────────────────── */}
+      <footer className="bg-earth-950 dark:bg-black text-earth-400">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-16 pb-8">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-10 mb-12">
+            {/* Brand column */}
+            <div className="md:col-span-1">
+              <Link to="/" className="flex items-center gap-2.5 mb-4">
+                <div className="w-9 h-9 bg-gradient-to-br from-primary-500 to-primary-700 rounded-xl flex items-center justify-center font-bold text-white font-display text-sm shadow-lg">
+                  AS
+                </div>
+                <span className="text-earth-100 font-display font-bold text-lg tracking-wide">AfriStudio</span>
+              </Link>
+              <p className="text-sm text-earth-500 leading-relaxed mb-5">
+                Africa's premier platform for discovering, collecting, and auctioning authentic African digital art.
+              </p>
+              <div className="flex gap-3">
+                {[
+                  { icon: Twitter, href: '#', label: 'Twitter' },
+                  { icon: Instagram, href: '#', label: 'Instagram' },
+                  { icon: Facebook, href: '#', label: 'Facebook' },
+                ].map(s => (
+                  <a
+                    key={s.label}
+                    href={s.href}
+                    aria-label={s.label}
+                    className="w-9 h-9 bg-earth-800 hover:bg-primary-600/30 hover:text-primary-400 border border-earth-700 hover:border-primary-600/50 rounded-lg flex items-center justify-center transition-all duration-200"
+                  >
+                    <s.icon size={15} />
+                  </a>
+                ))}
+              </div>
+            </div>
+
+            {/* Quick links */}
+            <div>
+              <h4 className="text-earth-200 font-semibold text-sm mb-4 uppercase tracking-widest">Explore</h4>
+              <ul className="space-y-2.5">
+                {[
+                  { label: 'Artworks', to: '/artworks' },
+                  { label: 'Auctions', to: '/auctions' },
+                  { label: 'Categories', to: '/artworks' },
+                  { label: 'Live Auctions', to: '/auctions' },
+                ].map(l => (
+                  <li key={l.label}>
+                    <Link to={l.to} className="text-sm text-earth-500 hover:text-primary-400 transition-colors">
+                      {l.label}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            {/* Account */}
+            <div>
+              <h4 className="text-earth-200 font-semibold text-sm mb-4 uppercase tracking-widest">Account</h4>
+              <ul className="space-y-2.5">
+                {[
+                  { label: 'Sign In', to: '/login' },
+                  { label: 'Register', to: '/register' },
+                  { label: 'Dashboard', to: '/dashboard' },
+                  { label: 'My Orders', to: '/dashboard/orders' },
+                  { label: 'My Wallet', to: '/dashboard/wallet' },
+                ].map(l => (
+                  <li key={l.label}>
+                    <Link to={l.to} className="text-sm text-earth-500 hover:text-primary-400 transition-colors">
+                      {l.label}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            {/* Newsletter */}
+            <div>
+              <h4 className="text-earth-200 font-semibold text-sm mb-4 uppercase tracking-widest">Stay Updated</h4>
+              <p className="text-sm text-earth-500 mb-4 leading-relaxed">
+                Get notified about new auctions and featured artists.
+              </p>
+              <div className="flex gap-2">
+                <input
+                  type="email"
+                  placeholder="your@email.com"
+                  className="flex-1 min-w-0 bg-earth-800 border border-earth-700 rounded-lg px-3 py-2 text-sm text-earth-200 placeholder-earth-600 focus:outline-none focus:ring-1 focus:ring-primary-500 focus:border-primary-500"
+                />
+                <button
+                  type="button"
+                  className="shrink-0 w-9 h-9 bg-primary-600 hover:bg-primary-500 rounded-lg flex items-center justify-center transition-colors"
+                >
+                  <Mail size={15} className="text-white" />
+                </button>
+              </div>
+              <p className="text-xs text-earth-600 mt-2">No spam, unsubscribe any time.</p>
+            </div>
           </div>
-          <p className="text-sm">© {new Date().getFullYear()} AfriStudio. All rights reserved.</p>
-          <div className="flex gap-6 text-sm">
-            <Link to="/artworks" className="hover:text-earth-200 transition-colors">Artworks</Link>
-            <Link to="/auctions" className="hover:text-earth-200 transition-colors">Auctions</Link>
-            <Link to="/login" className="hover:text-earth-200 transition-colors">Login</Link>
+
+          {/* Bottom bar */}
+          <div className="border-t border-earth-800 pt-8 flex flex-col sm:flex-row items-center justify-between gap-4">
+            <p className="text-xs text-earth-600">
+              © {new Date().getFullYear()} AfriStudio. All rights reserved.
+            </p>
+            <div className="flex gap-6 text-xs">
+              {['Privacy Policy', 'Terms of Service', 'Cookie Policy'].map(l => (
+                <a key={l} href="#" className="text-earth-600 hover:text-earth-400 transition-colors">{l}</a>
+              ))}
+            </div>
           </div>
         </div>
       </footer>
