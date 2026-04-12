@@ -2,9 +2,25 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
   ArrowRight, Gavel, Image, Shield, Globe, ChevronRight,
-  Clock, TrendingUp, Tag, Instagram, Twitter, Facebook, Mail,
-  Sparkles
+  Clock, TrendingUp, Tag, Mail, Sparkles
 } from 'lucide-react';
+
+/* ─── Inline brand icons (lucide-react dropped these) ─────────── */
+const IconX = () => (
+  <svg viewBox="0 0 24 24" fill="currentColor" width="15" height="15">
+    <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.746l7.73-8.835L1.254 2.25H8.08l4.26 5.632 5.903-5.632Zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
+  </svg>
+);
+const IconInstagram = () => (
+  <svg viewBox="0 0 24 24" fill="currentColor" width="15" height="15">
+    <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z" />
+  </svg>
+);
+const IconFacebook = () => (
+  <svg viewBox="0 0 24 24" fill="currentColor" width="15" height="15">
+    <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" />
+  </svg>
+);
 import { artworksApi, auctionsApi, categoriesApi } from '../../api';
 import type { Artwork, Auction, Category } from '../../api/types';
 import { Navbar } from '../../components/layout/Navbar';
@@ -24,8 +40,7 @@ function ArtworkCard({ artwork }: { artwork: Artwork }) {
           <img
             src={artwork.image_url}
             alt={artwork.name}
-            className="w-full h-full object-cover group-hover:scale-108 transition-transform duration-500"
-            style={{ transformOrigin: 'center' }}
+            className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
           />
         ) : (
           <div className="w-full h-full flex items-center justify-center">
@@ -116,12 +131,25 @@ function AuctionCard({ auction }: { auction: Auction }) {
 /* ─── Landing Page ─────────────────────────────────────────────── */
 export function LandingPage() {
   const [artworks, setArtworks] = useState<Artwork[]>([]);
+  const [heroArtworks, setHeroArtworks] = useState<Artwork[]>([]);
   const [auctions, setAuctions] = useState<Auction[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [currency, setCurrency] = useState('USD');
   const [loading, setLoading] = useState(true);
   const [artworksLoading, setArtworksLoading] = useState(false);
+  const [heroLoaded, setHeroLoaded] = useState(false);
   const { currencies } = useCurrencies();
+
+  // Hero images fetched immediately on mount — no currency param, just need image_url
+  useEffect(() => {
+    artworksApi.list()
+      .then(res => {
+        const imgs = (res.data.results || []).filter((a: Artwork) => a.image_url);
+        setHeroArtworks(imgs.slice(0, 9));
+        setHeroLoaded(true);
+      })
+      .catch(() => setHeroLoaded(true));
+  }, []);
 
   useEffect(() => {
     Promise.allSettled([auctionsApi.list(), categoriesApi.list()])
@@ -131,6 +159,7 @@ export function LandingPage() {
       }).finally(() => setLoading(false));
   }, []);
 
+  // Featured artworks re-fetch when currency changes
   useEffect(() => {
     setArtworksLoading(true);
     artworksApi.list({ currency })
@@ -141,42 +170,68 @@ export function LandingPage() {
 
   const liveAuctions = auctions.filter(a => a.status === 'live');
 
-  // For the hero mosaic — use all fetched artworks or fall back to fewer tiles
-  const heroImages = artworks.filter(a => a.image_url).slice(0, 9);
+  // Fill up to 9 tiles — repeat if fewer than 9 artworks available
+  const TILE_COUNT = 9;
+  const heroTiles = heroArtworks.length > 0
+    ? Array.from({ length: TILE_COUNT }, (_, i) => heroArtworks[i % heroArtworks.length])
+    : [];
 
   return (
     <div className="min-h-screen bg-earth-50 dark:bg-earth-950 transition-colors duration-300">
       <Navbar />
 
       {/* ── HERO ─────────────────────────────────────────────────── */}
-      <section className="hero-grain relative min-h-[92vh] flex items-center overflow-hidden bg-earth-950">
+      <section className="hero-grain relative h-screen min-h-[600px] max-h-[1000px] flex items-center overflow-hidden bg-earth-950">
 
-        {/* Artwork mosaic background */}
-        <div className="absolute inset-0 grid grid-cols-3 grid-rows-3 gap-0.5">
-          {heroImages.length > 0
-            ? heroImages.map((a, i) => (
-                <div key={a.uuid} className="overflow-hidden" style={{ animationDelay: `${i * 0.15}s` }}>
+        {/* ── Artwork mosaic background ── */}
+        <div className="absolute inset-0 grid grid-cols-3 grid-rows-3">
+          {heroTiles.length > 0
+            ? heroTiles.map((a, i) => (
+                <div
+                  key={`${a.uuid}-${i}`}
+                  className="w-full h-full overflow-hidden"
+                >
                   <img
                     src={a.image_url!}
                     alt=""
-                    className="w-full h-full object-cover animate-ken-burns"
+                    loading={i < 3 ? 'eager' : 'lazy'}
+                    className="w-full h-full object-cover"
                     style={{
-                      filter: 'brightness(0.28) saturate(0.6)',
-                      animationDelay: `${i * -3}s`,
+                      filter: 'brightness(0.32) saturate(0.55)',
+                      transform: 'scale(1.05)',
+                      animation: `kenBurns ${18 + i * 2}s ease-in-out infinite alternate`,
+                      animationDelay: `${i * -2.5}s`,
                     }}
                   />
                 </div>
               ))
-            : Array.from({ length: 9 }).map((_, i) => (
-                <div key={i} className="bg-gradient-to-br from-earth-900 to-earth-950" />
+            : Array.from({ length: TILE_COUNT }).map((_, i) => (
+                <div
+                  key={i}
+                  className="w-full h-full"
+                  style={{
+                    background: i % 2 === 0
+                      ? 'linear-gradient(135deg, #1a0e08, #2a1c12)'
+                      : 'linear-gradient(135deg, #120a04, #1e1208)',
+                    animation: heroLoaded ? undefined : 'pulse 2s ease-in-out infinite',
+                  }}
+                />
               ))
           }
         </div>
 
-        {/* Left-to-right gradient — makes text readable */}
-        <div className="absolute inset-0 bg-gradient-to-r from-earth-950 via-earth-950/85 to-earth-950/30" />
-        {/* Bottom vignette */}
-        <div className="absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-earth-950/80 to-transparent" />
+        {/* Gradient overlays for text readability */}
+        <div className="absolute inset-0 bg-gradient-to-r from-earth-950/98 via-earth-950/80 to-earth-950/20" />
+        <div className="absolute inset-0 bg-gradient-to-t from-earth-950/70 via-transparent to-earth-950/30" />
+
+        {/* Warm amber glow behind text */}
+        <div
+          className="absolute left-0 top-1/2 -translate-y-1/2 w-[600px] h-[600px] rounded-full pointer-events-none"
+          style={{
+            background: 'radial-gradient(circle, rgba(180,100,20,0.12) 0%, transparent 70%)',
+            filter: 'blur(40px)',
+          }}
+        />
 
         {/* Hero content */}
         <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24 lg:py-32 w-full">
@@ -431,9 +486,9 @@ export function LandingPage() {
               </p>
               <div className="flex gap-3">
                 {[
-                  { icon: Twitter, href: '#', label: 'Twitter' },
-                  { icon: Instagram, href: '#', label: 'Instagram' },
-                  { icon: Facebook, href: '#', label: 'Facebook' },
+                  { icon: IconX, href: '#', label: 'X (Twitter)' },
+                  { icon: IconInstagram, href: '#', label: 'Instagram' },
+                  { icon: IconFacebook, href: '#', label: 'Facebook' },
                 ].map(s => (
                   <a
                     key={s.label}
@@ -441,7 +496,7 @@ export function LandingPage() {
                     aria-label={s.label}
                     className="w-9 h-9 bg-earth-800 hover:bg-primary-600/30 hover:text-primary-400 border border-earth-700 hover:border-primary-600/50 rounded-lg flex items-center justify-center transition-all duration-200"
                   >
-                    <s.icon size={15} />
+                    <s.icon />
                   </a>
                 ))}
               </div>
