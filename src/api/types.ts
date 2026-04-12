@@ -1,0 +1,169 @@
+export interface User {
+  uuid: string;
+  name: string;
+  email: string | null;
+  phone: string | null;
+  verified_at: string | null;
+  roles: string[];
+  permissions: string[];
+}
+
+export interface TokenResponse {
+  access_token: string;
+  refresh_token: string;
+  token_type: string;
+  user: User;
+}
+
+export interface Category {
+  uuid: string;
+  name: string;
+  slug: string;
+  artworks_count: number;
+}
+
+export interface ArtworkPricing {
+  base_usd: number;
+  converted_amount: number;
+  currency_code: string;
+  currency_symbol: string;
+  formatted: string;
+}
+
+export interface Artwork {
+  uuid: string;
+  name: string;
+  dimensions: string;
+  category: Category;
+  pricing: ArtworkPricing | null;
+  image_url: string;
+  is_sold: boolean;
+  created_at: string;
+}
+
+export interface Auction {
+  uuid: string;
+  artwork_uuid: string;
+  artwork_name: string;
+  artwork_image: string;
+  created_by_name: string;
+  start_price: string;
+  reserve_price: string | null;
+  current_price: string | null;
+  bid_increment: string;
+  minimum_next_bid: string;
+  currency: string;
+  start_time: string;
+  end_time: string;
+  status: 'pending' | 'live' | 'ended' | 'cancelled';
+  winner_name: string;
+  total_bids: number;
+  top_bids: string;
+  seconds_remaining: string;
+  created_at: string;
+}
+
+export interface Bid {
+  uuid: string;
+  bidder_name: string;
+  amount: string;
+  is_winning: boolean;
+  created_at: string;
+}
+
+export interface Currency {
+  uuid: string;
+  code: string;
+  symbol: string;
+  rate: string;
+}
+
+export interface CartItem {
+  uuid: string;
+  artwork_uuid: string;
+  artwork_name: string;
+  artwork_image: string;
+  source: 'manual' | 'auction_win';
+  price: string;
+  currency: string;
+  created_at: string;
+}
+
+export interface Cart {
+  uuid: string;
+  items: CartItem[];
+  total: string;
+  updated_at: string;
+}
+
+export interface OrderItem {
+  id: number;
+  artwork_name: string;
+  price: string;
+  currency: string;
+}
+
+export interface Order {
+  uuid: string;
+  status: 'pending' | 'confirmed' | 'shipped' | 'delivered' | 'cancelled';
+  total: string;
+  currency: string;
+  items: OrderItem[];
+  delivery_name: string;
+  delivery_phone: string;
+  delivery_address: string;
+  delivery_city: string;
+  delivery_country: string;
+  notes: string;
+  created_at: string;
+}
+
+export interface Profile {
+  uuid: string;
+  bio: string | null;
+  avatar_url: string;
+  address: string | null;
+  city: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface WalletTransaction {
+  id: number;
+  type: 'deposit' | 'deduction' | 'refund';
+  amount: string;
+  balance_after: string;
+  description: string;
+  reference: string;
+  created_at: string;
+}
+
+export interface Wallet {
+  id: number;
+  balance: string;
+  currency: string;
+  transactions: WalletTransaction[];
+  updated_at: string;
+}
+
+export interface ActivityLog {
+  id: number;
+  log_name: string | null;
+  description: string;
+  event: string | null;
+  subject_type: number | null;
+  subject_id: number | null;
+  subject: string;
+  causer: number | null;
+  causer_name: string;
+  properties: unknown;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface Paginated<T> {
+  count: number;
+  next: string | null;
+  previous: string | null;
+  results: T[];
+}
