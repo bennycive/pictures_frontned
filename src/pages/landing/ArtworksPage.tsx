@@ -137,11 +137,18 @@ export function ArtworksPage() {
                 <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-5">
                   {artworks.map(artwork => (
                     <div key={artwork.uuid} className="bg-white rounded-xl overflow-hidden border border-earth-100 hover:shadow-md transition-shadow group">
-                      <Link to={`/artworks/${artwork.uuid}`} className="block aspect-[4/3] overflow-hidden bg-earth-100">
+                      <Link to={`/artworks/${artwork.uuid}`} className="relative block aspect-[4/3] overflow-hidden bg-earth-100">
                         {artwork.image_url ? (
-                          <img src={artwork.image_url} alt={artwork.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+                          <img src={artwork.image_url} alt={artwork.name} className={`w-full h-full object-cover group-hover:scale-105 transition-transform duration-300 ${artwork.is_sold ? 'blur-sm brightness-50' : ''}`} />
                         ) : (
                           <div className="w-full h-full flex items-center justify-center"><Image size={40} className="text-earth-300" /></div>
+                        )}
+                        {artwork.is_sold && (
+                          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                            <div className="border-4 border-red-500 rounded-lg px-4 py-1.5 rotate-[-18deg]">
+                              <span className="text-red-500 font-display font-extrabold text-2xl tracking-widest uppercase">Sold</span>
+                            </div>
+                          </div>
                         )}
                       </Link>
                       <div className="p-4">

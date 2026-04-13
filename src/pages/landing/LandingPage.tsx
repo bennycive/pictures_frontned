@@ -19,16 +19,24 @@ function ArtworkCard({ artwork }: { artwork: Artwork }) {
       to={`/artworks/${artwork.uuid}`}
       className="group relative bg-white dark:bg-earth-800 rounded-2xl overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 border border-earth-100 dark:border-earth-700"
     >
-      <div className="aspect-[4/3] bg-earth-100 dark:bg-earth-700 overflow-hidden">
+      <div className="relative aspect-[4/3] bg-earth-100 dark:bg-earth-700 overflow-hidden">
         {artwork.image_url ? (
           <img
             src={artwork.image_url}
             alt={artwork.name}
-            className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+            className={`w-full h-full object-cover group-hover:scale-110 transition-transform duration-500 ${artwork.is_sold ? 'blur-sm brightness-50' : ''}`}
           />
         ) : (
           <div className="w-full h-full flex items-center justify-center">
             <Image size={40} className="text-earth-300" />
+          </div>
+        )}
+        {/* Sold stamp */}
+        {artwork.is_sold && (
+          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+            <div className="border-4 border-red-500 rounded-lg px-4 py-1.5 rotate-[-18deg]">
+              <span className="text-red-500 font-display font-extrabold text-2xl tracking-widest uppercase">Sold</span>
+            </div>
           </div>
         )}
       </div>
