@@ -11,6 +11,7 @@ import { Navbar } from '../../components/layout/Navbar';
 import { StatusBadge } from '../../components/ui/Badge';
 import { Spinner } from '../../components/ui/Spinner';
 import { useCurrencies } from '../../hooks/useCurrencies';
+import { useCurrency } from '../../hooks/useCurrency';
 
 /* ─── Artwork card ─────────────────────────────────────────────── */
 function ArtworkCard({ artwork }: { artwork: Artwork }) {
@@ -126,7 +127,7 @@ export function LandingPage() {
   const [heroArtworks, setHeroArtworks] = useState<Artwork[]>([]);
   const [auctions, setAuctions] = useState<Auction[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
-  const [currency, setCurrency] = useState(() => localStorage.getItem('afristudio-currency') || 'USD');
+  const { currency, setCurrency } = useCurrency();
   const [loading, setLoading] = useState(true);
   const [artworksLoading, setArtworksLoading] = useState(false);
   const { currencies } = useCurrencies();
@@ -149,8 +150,6 @@ export function LandingPage() {
       }).finally(() => setLoading(false));
   }, []);
 
-  // Persist selected currency
-  useEffect(() => { localStorage.setItem('afristudio-currency', currency); }, [currency]);
 
   // Featured artworks re-fetch when currency changes
   useEffect(() => {

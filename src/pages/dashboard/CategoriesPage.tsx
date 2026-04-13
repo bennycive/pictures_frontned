@@ -17,6 +17,7 @@ export function CategoriesPage() {
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<Category | null>(null);
   const [name, setName] = useState('');
+  const [description, setDescription] = useState('');
   const [saving, setSaving] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState<Category | null>(null);
 
@@ -35,15 +36,15 @@ export function CategoriesPage() {
 
   useEffect(() => { load(); }, [search]);
 
-  const openCreate = () => { setEditing(null); setName(''); setModalOpen(true); };
-  const openEdit = (c: Category) => { setEditing(c); setName(c.name); setModalOpen(true); };
+  const openCreate = () => { setEditing(null); setName(''); setDescription(''); setModalOpen(true); };
+  const openEdit = (c: Category) => { setEditing(c); setName(c.name); setDescription(c.description || ''); setModalOpen(true); };
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true);
     try {
-      if (editing) { await categoriesApi.update(editing.uuid, { name }); success('Category updated!'); }
-      else { await categoriesApi.create({ name }); success('Category created!'); }
+      if (editing) { await categoriesApi.update(editing.uuid, { name, description }); success('Category updated!'); }
+      else { await categoriesApi.create({ name, description }); success('Category created!'); }
       setModalOpen(false);
       load();
     } catch { error('Failed to save category'); }
@@ -58,6 +59,7 @@ export function CategoriesPage() {
   const columns = [
     { key: 'name', header: 'Name', render: (c: Category) => <span className="font-medium text-earth-900">{c.name}</span> },
     { key: 'slug', header: 'Slug', render: (c: Category) => <code className="text-xs bg-earth-100 px-2 py-0.5 rounded">{c.slug}</code> },
+    { key: 'description', header: 'Description', render: (c: Category) => <span className="text-earth-600 text-sm">{c.description || <span className="italic text-earth-400">—</span>}</span> },
     { key: 'artworks_count', header: 'Artworks', render: (c: Category) => <span className="font-medium">{c.artworks_count}</span> },
     { key: 'actions', header: 'Actions', render: (c: Category) => (
       <div className="flex gap-2">
@@ -91,6 +93,10 @@ export function CategoriesPage() {
           <div>
             <label className="block text-sm font-medium text-earth-700 mb-1">Name</label>
             <input className="input" value={name} onChange={e => setName(e.target.value)} required />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-earth-700 mb-1">Description</label>
+            <textarea className="input min-h-[80px] resize-y" value={description} onChange={e => setDescription(e.target.value)} placeholder="Optional description..." />
           </div>
           <div className="flex gap-3 pt-2">
             <button type="button" onClick={() => setModalOpen(false)} className="btn-secondary flex-1">Cancel</button>

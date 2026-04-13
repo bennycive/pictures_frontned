@@ -39,10 +39,15 @@ export const categoriesApi = {
   list: (params?: Record<string, unknown>) =>
     api.get<Paginated<Category>>('/api/categories/', { params }),
   get: (uuid: string) => api.get<Category>(`/api/categories/${uuid}/`),
-  create: (data: { name: string }) => api.post<Category>('/api/categories/', data),
-  update: (uuid: string, data: { name: string }) =>
+  create: (data: { name: string; description?: string }) => api.post<Category>('/api/categories/', data),
+  update: (uuid: string, data: { name: string; description?: string }) =>
     api.put<Category>(`/api/categories/${uuid}/`, data),
   delete: (uuid: string) => api.delete(`/api/categories/${uuid}/`),
+};
+
+export const currenciesPublicApi = {
+  list: (params?: Record<string, unknown>) =>
+    api.get<Paginated<Currency>>('/api/currencies/public/', { params }),
 };
 
 // Currencies

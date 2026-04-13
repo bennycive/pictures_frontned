@@ -4,6 +4,7 @@ import { Search, Image, ShoppingCart, SlidersHorizontal, ChevronDown } from 'luc
 import { artworksApi, categoriesApi, cartApi } from '../../api';
 import type { Artwork, Category } from '../../api/types';
 import { useCurrencies } from '../../hooks/useCurrencies';
+import { useCurrency } from '../../hooks/useCurrency';
 import { Navbar } from '../../components/layout/Navbar';
 import { Footer } from '../../components/layout/Footer';
 import { Spinner } from '../../components/ui/Spinner';
@@ -24,7 +25,7 @@ export function ArtworksPage() {
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
   const [addingToCart, setAddingToCart] = useState<string | null>(null);
-  const [currency, setCurrency] = useState(() => localStorage.getItem('afristudio-currency') || 'USD');
+  const { currency, setCurrency } = useCurrency();
   const { currencies } = useCurrencies();
   const categoryFilter = searchParams.get('category') || '';
 
@@ -43,7 +44,6 @@ export function ArtworksPage() {
   };
 
   useEffect(() => { load(); }, [search, page, currency, categoryFilter]);
-  useEffect(() => { localStorage.setItem('afristudio-currency', currency); }, [currency]);
 
   const doAddToCart = async (uuid: string) => {
     setAddingToCart(uuid);

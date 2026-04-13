@@ -6,6 +6,29 @@ const BASE_URL = import.meta.env.DEV
   ? ''                                          // relative – Vite proxy handles it
   : (import.meta.env.VITE_API_URL || '');
 
+// Strip the backend origin from absolute media URLs so they become relative
+// paths (/media/...). Vite's proxy then forwards them to the backend,
+// which means images work both on localhost AND from other devices on the
+// network (e.g. http://192.168.x.x:5173).
+const BACKEND_ORIGIN = (import.meta.env.VITE_API_URL || 'http://localhost:8000').replace(/\/$/, '');
+const IMAGE_FIELDS = ['image_url', 'artwork_image', 'avatar_url'];
+
+function rewriteImageUrls(obj: unknown): unknown {
+  if (Array.isArray(obj)) return obj.map(rewriteImageUrls);
+  if (obj && typeof obj === 'object') {
+    const out: Record<string, unknown> = {};
+    for (const [k, v] of Object.entries(obj as Record<string, unknown>)) {
+      if (IMAGE_FIELDS.includes(k) && typeof v === 'string' && v.startsWith(BACKEND_ORIGIN)) {
+        out[k] = v.slice(BACKEND_ORIGIN.length); // → /media/...
+      } else {
+        out[k] = rewriteImageUrls(v);
+      }
+    }
+    return out;
+  }
+  return obj;
+}
+
 export const apiClient = axios.create({
   baseURL: BASE_URL,
   headers: { 'Content-Type': 'application/json' },
@@ -18,7 +41,10 @@ apiClient.interceptors.request.use((config) => {
 });
 
 apiClient.interceptors.response.use(
-  (res) => res,
+  (res) => {
+    res.data = rewriteImageUrls(res.data);
+    return res;
+  },
   async (error) => {
     const original = error.config;
     if (error.response?.status === 401 && !original._retry) {

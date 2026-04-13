@@ -4,6 +4,7 @@ import { ArrowLeft, ShoppingCart, Image, Tag, Ruler, DollarSign, LogIn, Gavel, C
 import { artworksApi, cartApi, auctionsApi } from '../../api';
 import type { Artwork, Auction } from '../../api/types';
 import { useCurrencies } from '../../hooks/useCurrencies';
+import { useCurrency } from '../../hooks/useCurrency';
 import { Navbar } from '../../components/layout/Navbar';
 import { Footer } from '../../components/layout/Footer';
 import { Badge, StatusBadge } from '../../components/ui/Badge';
@@ -20,7 +21,7 @@ export function ArtworkDetailPage() {
 
   const [artwork, setArtwork] = useState<Artwork | null>(null);
   const [auctions, setAuctions] = useState<Auction[]>([]);
-  const [currency, setCurrency] = useState('USD');
+  const { currency, setCurrency } = useCurrency();
   const { currencies } = useCurrencies();
   const [loading, setLoading] = useState(true);
   const [addingToCart, setAddingToCart] = useState(false);
