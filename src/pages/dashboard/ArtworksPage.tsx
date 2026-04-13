@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef, useCallback } from 'react';
-import { Plus, Search, Pencil, Trash2, Image, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from 'lucide-react';
+import { Plus, Search, Pencil, Trash2, Image, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Upload, X } from 'lucide-react';
 import { artworksApi, categoriesApi } from '../../api';
 import type { Artwork, Category } from '../../api/types';
 import { Modal } from '../../components/ui/Modal';
@@ -29,6 +29,7 @@ export function ArtworksPage() {
   const [form, setForm] = useState<ArtworkForm>({ name: '', dimensions: '', base_price: '', category_uuid: '', is_sold: false, image: null });
   const [saving, setSaving] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState<Artwork | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   // When search triggers a load, suppress the page-effect duplicate
@@ -89,15 +90,26 @@ export function ArtworksPage() {
 
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
+  // Revoke any previous object URL to avoid memory leaks
+  const setPreview = (file: File | null, fallback: string | null = null) => {
+    setPreviewUrl(prev => {
+      if (prev && prev.startsWith('blob:')) URL.revokeObjectURL(prev);
+      if (file) return URL.createObjectURL(file);
+      return fallback;
+    });
+  };
+
   const openCreate = () => {
     setEditing(null);
     setForm({ name: '', dimensions: '', base_price: '', category_uuid: categories[0]?.uuid || '', is_sold: false, image: null });
+    setPreview(null, null);
     setModalOpen(true);
   };
 
   const openEdit = (a: Artwork) => {
     setEditing(a);
     setForm({ name: a.name, dimensions: a.dimensions, base_price: String(a.pricing?.base_usd ?? ''), category_uuid: a.category?.uuid || '', is_sold: a.is_sold, image: null });
+    setPreview(null, a.image_url || null);
     setModalOpen(true);
   };
 
@@ -349,9 +361,79 @@ export function ArtworksPage() {
               <input type="number" step="0.01" min="0" className="input" placeholder="250.00" value={form.base_price} onChange={e => setForm(f => ({ ...f, base_price: e.target.value }))} required />
             </div>
           </div>
+          {/* Image upload with preview */}
           <div>
-            <label className="block text-sm font-medium text-earth-700 mb-1">Image</label>
-            <input ref={fileRef} type="file" accept="image/*" className="input" onChange={e => setForm(f => ({ ...f, image: e.target.files?.[0] || null }))} />
+            <label className="block text-sm font-medium text-earth-700 dark:text-earth-300 mb-1">
+              Image {editing && <span className="text-xs text-earth-400 font-normal">(leave empty to keep current)</span>}
+            </label>
+            <input
+              ref={fileRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={e => {
+                const file = e.target.files?.[0] || null;
+                setForm(f => ({ ...f, image: file }));
+                setPreview(file, editing?.image_url || null);
+              }}
+            />
+            {previewUrl ? (
+              <div className="relative group rounded-xl overflow-hidden border-2 border-earth-200 dark:border-earth-600 bg-earth-50 dark:bg-earth-700">
+                <img
+                  src={previewUrl}
+                  alt="Preview"
+                  className="w-full h-48 object-cover"
+                />
+                {/* Overlay on hover */}
+                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-3">
+                  <button
+                    type="button"
+                    onClick={() => fileRef.current?.click()}
+                    className="flex items-center gap-1.5 bg-white/90 hover:bg-white text-earth-900 text-xs font-semibold px-3 py-2 rounded-lg transition-colors"
+                  >
+                    <Upload size={13} /> Change
+                  </button>
+                  {form.image && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setForm(f => ({ ...f, image: null }));
+                        setPreview(null, editing?.image_url || null);
+                        if (fileRef.current) fileRef.current.value = '';
+                      }}
+                      className="flex items-center gap-1.5 bg-red-500/90 hover:bg-red-500 text-white text-xs font-semibold px-3 py-2 rounded-lg transition-colors"
+                    >
+                      <X size={13} /> Remove
+                    </button>
+                  )}
+                </div>
+                {/* New file badge */}
+                {form.image && (
+                  <div className="absolute top-2 left-2 bg-primary-600 text-white text-xs font-medium px-2 py-0.5 rounded-full">
+                    New
+                  </div>
+                )}
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => fileRef.current?.click()}
+                className="w-full h-36 border-2 border-dashed border-earth-300 dark:border-earth-600 rounded-xl flex flex-col items-center justify-center gap-2 hover:border-primary-400 hover:bg-primary-50/30 dark:hover:bg-primary-900/10 transition-colors group"
+              >
+                <div className="w-10 h-10 bg-earth-100 dark:bg-earth-700 group-hover:bg-primary-100 dark:group-hover:bg-primary-900/30 rounded-full flex items-center justify-center transition-colors">
+                  <Upload size={18} className="text-earth-400 group-hover:text-primary-600 transition-colors" />
+                </div>
+                <div className="text-center">
+                  <p className="text-sm font-medium text-earth-600 dark:text-earth-400 group-hover:text-primary-600 transition-colors">Click to upload image</p>
+                  <p className="text-xs text-earth-400 mt-0.5">PNG, JPG, WEBP up to 10MB</p>
+                </div>
+              </button>
+            )}
+            {form.image && (
+              <p className="text-xs text-earth-400 mt-1.5 truncate">
+                Selected: <span className="font-medium text-earth-600 dark:text-earth-300">{form.image.name}</span>
+              </p>
+            )}
           </div>
           <div className="flex items-center gap-2">
             <input type="checkbox" id="is_sold" checked={form.is_sold} onChange={e => setForm(f => ({ ...f, is_sold: e.target.checked }))} className="w-4 h-4 rounded accent-primary-600" />
