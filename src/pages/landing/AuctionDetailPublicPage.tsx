@@ -214,7 +214,7 @@ export function AuctionDetailPublicPage() {
                 </div>
               </div>
 
-              {auction.winner_name && (
+              {auction.status === 'ended' && auction.winner_name && (
                 <div className="bg-green-50 border border-green-100 rounded-xl p-4">
                   <p className="text-sm text-green-700"><span className="font-semibold">Winner:</span> {auction.winner_name}</p>
                 </div>

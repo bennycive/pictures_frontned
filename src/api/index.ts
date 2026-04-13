@@ -81,7 +81,7 @@ export const cartApi = {
 
 // Orders
 export const ordersApi = {
-  list: () => api.get<Order[]>('/api/orders/'),
+  list: (params?: Record<string, unknown>) => api.get<Order[]>('/api/orders/', { params }),
   get: (uuid: string) => api.get<Order>(`/api/orders/${uuid}/`),
   checkout: (data: Record<string, unknown>) =>
     api.post<Order>('/api/orders/checkout/', data),

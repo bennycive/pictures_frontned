@@ -116,6 +116,9 @@ export interface Order {
   delivery_country: string;
   notes: string;
   created_at: string;
+  buyer_uuid?: string;
+  buyer_name?: string;
+  buyer_email?: string;
 }
 
 export interface Profile {
