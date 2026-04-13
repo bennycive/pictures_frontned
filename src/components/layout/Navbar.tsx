@@ -1,9 +1,10 @@
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { ShoppingCart, LogOut, LayoutDashboard, Menu, X, Sun, Moon } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useAuthModal } from '../../context/AuthModalContext';
 import { useTheme } from '../../context/ThemeContext';
 import { useState, useEffect } from 'react';
+import { Logo } from '../ui/Logo';
 
 interface NavbarProps {
   scrollAware?: boolean;
@@ -14,6 +15,7 @@ export function Navbar({ scrollAware = false }: NavbarProps) {
   const { openAuthModal } = useAuthModal();
   const { theme, toggle } = useTheme();
   const navigate = useNavigate();
+  const location = useLocation();
   const [menuOpen, setMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
 
@@ -32,69 +34,129 @@ export function Navbar({ scrollAware = false }: NavbarProps) {
 
   const isTransparent = scrollAware && !scrolled;
 
+  const links = [
+    { label: 'Home', to: '/' },
+    { label: 'Gallery', to: '/artworks' },
+    { label: 'Auction', to: '/auctions' },
+    { label: 'About Artist', to: '/about' },
+    { label: 'Contact', to: '/contact' },
+  ];
+
+  const isActive = (to: string) =>
+    to === '/' ? location.pathname === '/' : location.pathname.startsWith(to);
+
   return (
-    <nav className={`text-white sticky top-0 z-40 transition-all duration-300 ${isTransparent ? 'bg-transparent shadow-none' : 'bg-earth-900 shadow-lg'}`}>
+    <nav className={`sticky top-0 z-40 transition-all duration-300 ${
+      isTransparent
+        ? 'bg-transparent shadow-none'
+        : 'bg-earth-50 dark:bg-earth-900 shadow-sm border-b border-earth-100 dark:border-earth-800'
+    }`}>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
+
           {/* Logo */}
-          <Link to="/" className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-primary-500 rounded-lg flex items-center justify-center font-bold text-white text-sm">AS</div>
-            <span className="font-display font-bold text-lg tracking-wide">AfriStudio</span>
+          <Link to="/" className="flex items-center">
+            <Logo
+              variant={isTransparent ? 'light' : 'dark'}
+              className="h-7 w-auto"
+            />
           </Link>
 
           {/* Desktop Nav */}
-          <div className="hidden md:flex items-center gap-6 text-sm">
-            <Link to="/" className="hover:text-primary-300 transition-colors">Home</Link>
-            <Link to="/artworks" className="hover:text-primary-300 transition-colors">Artworks</Link>
-            <Link to="/auctions" className="hover:text-primary-300 transition-colors">Auctions</Link>
-            <Link to="/about" className="hover:text-primary-300 transition-colors">About</Link>
-            <Link to="/contact" className="hover:text-primary-300 transition-colors">Contact</Link>
+          <div className="hidden md:flex items-center gap-7 text-sm font-medium">
+            {links.map(l => (
+              <Link
+                key={l.to}
+                to={l.to}
+                className={`relative pb-0.5 transition-colors ${
+                  isTransparent
+                    ? isActive(l.to)
+                      ? 'text-primary-300'
+                      : 'text-white/90 hover:text-white'
+                    : isActive(l.to)
+                      ? 'text-primary-500 dark:text-primary-400'
+                      : 'text-earth-700 dark:text-earth-300 hover:text-primary-500 dark:hover:text-primary-400'
+                }`}
+              >
+                {l.label}
+                {isActive(l.to) && !isTransparent && (
+                  <span className="absolute -bottom-0.5 left-0 right-0 h-0.5 bg-primary-500 rounded-full" />
+                )}
+              </Link>
+            ))}
           </div>
 
           {/* Actions */}
           <div className="flex items-center gap-2">
-            {/* Theme toggle — always visible */}
+            {/* Theme toggle */}
             <button
               onClick={toggle}
-              className="p-2 hover:bg-earth-800 rounded-lg transition-colors"
-              title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+              className={`p-2 rounded-lg transition-colors ${
+                isTransparent
+                  ? 'text-white/80 hover:text-white hover:bg-white/10'
+                  : 'text-earth-500 dark:text-earth-400 hover:bg-earth-100 dark:hover:bg-earth-800'
+              }`}
+              title={theme === 'dark' ? 'Light mode' : 'Dark mode'}
             >
-              {theme === 'dark'
-                ? <Sun size={18} className="text-gold-400" />
-                : <Moon size={18} className="text-earth-300" />
-              }
+              {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
             </button>
 
             {user ? (
               <>
-                <Link to="/dashboard/cart" className="p-2 hover:bg-earth-800 rounded-lg transition-colors hidden md:flex">
+                <Link
+                  to="/dashboard/cart"
+                  className={`p-2 rounded-lg transition-colors hidden md:flex ${
+                    isTransparent
+                      ? 'text-white/80 hover:text-white hover:bg-white/10'
+                      : 'text-earth-600 dark:text-earth-400 hover:bg-earth-100 dark:hover:bg-earth-800'
+                  }`}
+                >
                   <ShoppingCart size={20} />
                 </Link>
-                <Link to="/dashboard" className="hidden md:flex items-center gap-2 bg-primary-600 hover:bg-primary-700 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors">
-                  <LayoutDashboard size={16} />
-                  Dashboard
+                <Link
+                  to="/dashboard"
+                  className="hidden md:flex items-center gap-1.5 bg-earth-900 dark:bg-earth-700 hover:bg-earth-800 text-white text-sm font-medium px-4 py-2 rounded-full transition-colors"
+                >
+                  <LayoutDashboard size={15} /> Dashboard
                 </Link>
-                <button onClick={handleLogout} className="hidden md:flex p-2 hover:bg-earth-800 rounded-lg transition-colors" title="Logout">
-                  <LogOut size={20} />
+                <button
+                  onClick={handleLogout}
+                  className="hidden md:flex p-2 text-earth-500 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
+                >
+                  <LogOut size={18} />
                 </button>
               </>
             ) : (
-              <div className="hidden md:flex gap-2">
+              <div className="hidden md:flex items-center gap-2">
                 <button
                   onClick={() => openAuthModal({ defaultTab: 'login' })}
-                  className="px-3 py-1.5 text-sm hover:text-primary-300 transition-colors"
+                  className={`flex items-center gap-2 text-sm font-medium px-4 py-2 rounded-full transition-colors ${
+                    isTransparent
+                      ? 'text-white border border-white/30 hover:bg-white/10'
+                      : 'bg-earth-900 dark:bg-earth-700 hover:bg-earth-800 text-white'
+                  }`}
                 >
                   Sign In
                 </button>
-                <button
-                  onClick={() => openAuthModal({ defaultTab: 'register' })}
-                  className="px-3 py-1.5 bg-primary-600 hover:bg-primary-700 rounded-lg text-sm font-medium transition-colors"
+                <Link
+                  to="/dashboard/cart"
+                  className={`p-2 rounded-lg transition-colors ${
+                    isTransparent
+                      ? 'text-white/80 hover:text-white hover:bg-white/10'
+                      : 'text-earth-600 dark:text-earth-400 hover:bg-earth-100 dark:hover:bg-earth-800'
+                  }`}
                 >
-                  Register
-                </button>
+                  <ShoppingCart size={20} />
+                </Link>
               </div>
             )}
-            <button className="md:hidden p-2 hover:bg-earth-800 rounded-lg" onClick={() => setMenuOpen(!menuOpen)}>
+
+            <button
+              className={`md:hidden p-2 rounded-lg transition-colors ${
+                isTransparent ? 'text-white hover:bg-white/10' : 'text-earth-700 hover:bg-earth-100 dark:text-earth-300 dark:hover:bg-earth-800'
+              }`}
+              onClick={() => setMenuOpen(!menuOpen)}
+            >
               {menuOpen ? <X size={20} /> : <Menu size={20} />}
             </button>
           </div>
@@ -103,25 +165,37 @@ export function Navbar({ scrollAware = false }: NavbarProps) {
 
       {/* Mobile menu */}
       {menuOpen && (
-        <div className="md:hidden bg-earth-800 border-t border-earth-700 px-4 py-3 flex flex-col gap-3 text-sm">
-          <Link to="/" onClick={() => setMenuOpen(false)} className="hover:text-primary-300">Home</Link>
-          <Link to="/artworks" onClick={() => setMenuOpen(false)} className="hover:text-primary-300">Artworks</Link>
-          <Link to="/auctions" onClick={() => setMenuOpen(false)} className="hover:text-primary-300">Auctions</Link>
-          <Link to="/about" onClick={() => setMenuOpen(false)} className="hover:text-primary-300">About</Link>
-          <Link to="/contact" onClick={() => setMenuOpen(false)} className="hover:text-primary-300">Contact</Link>
-          {user ? (
-            <>
-              <Link to="/dashboard" onClick={() => setMenuOpen(false)} className="hover:text-primary-300">Dashboard</Link>
-              <button onClick={handleLogout} className="text-left text-red-400 hover:text-red-300">Logout</button>
-            </>
-          ) : (
-            <>
-              <button onClick={() => { setMenuOpen(false); openAuthModal({ defaultTab: 'login' }); }}
-                className="text-left hover:text-primary-300">Sign In</button>
-              <button onClick={() => { setMenuOpen(false); openAuthModal({ defaultTab: 'register' }); }}
-                className="text-left hover:text-primary-300">Register</button>
-            </>
-          )}
+        <div className="md:hidden bg-earth-50 dark:bg-earth-900 border-t border-earth-100 dark:border-earth-800 px-4 py-4 flex flex-col gap-3 text-sm">
+          {links.map(l => (
+            <Link
+              key={l.to}
+              to={l.to}
+              onClick={() => setMenuOpen(false)}
+              className={`font-medium transition-colors ${
+                isActive(l.to)
+                  ? 'text-primary-500'
+                  : 'text-earth-700 dark:text-earth-300 hover:text-primary-500'
+              }`}
+            >
+              {l.label}
+            </Link>
+          ))}
+          <div className="border-t border-earth-100 dark:border-earth-800 pt-3 mt-1 flex flex-col gap-2">
+            {user ? (
+              <>
+                <Link to="/dashboard" onClick={() => setMenuOpen(false)} className="text-earth-700 dark:text-earth-300 hover:text-primary-500">Dashboard</Link>
+                <Link to="/dashboard/cart" onClick={() => setMenuOpen(false)} className="text-earth-700 dark:text-earth-300 hover:text-primary-500">Cart</Link>
+                <button onClick={handleLogout} className="text-left text-red-500 hover:text-red-600">Logout</button>
+              </>
+            ) : (
+              <>
+                <button onClick={() => { setMenuOpen(false); openAuthModal({ defaultTab: 'login' }); }}
+                  className="text-left text-earth-700 dark:text-earth-300 hover:text-primary-500">Sign In</button>
+                <button onClick={() => { setMenuOpen(false); openAuthModal({ defaultTab: 'register' }); }}
+                  className="text-left text-earth-700 dark:text-earth-300 hover:text-primary-500">Register</button>
+              </>
+            )}
+          </div>
         </div>
       )}
     </nav>
