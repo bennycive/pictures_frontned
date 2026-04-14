@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { ArrowLeft, ShoppingCart, Image, LogIn, Gavel, Heart, Share2 } from 'lucide-react';
+import { ArrowLeft, ShoppingCart, Image, LogIn, Gavel, Heart, Share2, Download } from 'lucide-react';
 import { artworksApi, cartApi, auctionsApi } from '../../api';
 import type { Artwork, Auction } from '../../api/types';
 import { useCurrencies } from '../../hooks/useCurrencies';
@@ -12,6 +12,8 @@ import { useToast } from '../../components/ui/Toast';
 import { useAuth } from '../../context/AuthContext';
 import { useAuthModal } from '../../context/AuthModalContext';
 import { PageSpinner } from '../../components/ui/Spinner';
+import { downloadWithWatermark } from '../../utils/watermark';
+import { WatermarkedImage } from '../../components/ui/WatermarkedImage';
 
 export function ArtworkDetailPage() {
   const { uuid } = useParams<{ uuid: string }>();
@@ -27,6 +29,7 @@ export function ArtworkDetailPage() {
   const [addingToCart, setAddingToCart] = useState(false);
   const [addedToCart, setAddedToCart] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [downloading, setDownloading] = useState(false);
 
   useEffect(() => {
     if (!uuid) return;
@@ -61,6 +64,18 @@ export function ArtworkDetailPage() {
       return;
     }
     doAddToCart();
+  };
+
+  const handleDownload = async () => {
+    if (!artwork?.image_url) return;
+    setDownloading(true);
+    try {
+      await downloadWithWatermark(artwork.image_url, artwork.name);
+    } catch {
+      error('Failed to download image');
+    } finally {
+      setDownloading(false);
+    }
   };
 
   const handleShare = async () => {
@@ -113,9 +128,9 @@ export function ArtworkDetailPage() {
 
           {/* ── Left: Image ─────────────────────────────────────── */}
           <div className="relative">
-            <div className="rounded-2xl overflow-hidden bg-earth-100 dark:bg-earth-800 shadow-lg aspect-[4/5]">
+            <div className="rounded-2xl overflow-hidden bg-earth-100 dark:bg-earth-800 shadow-lg aspect-[4/5] select-none">
               {artwork.image_url ? (
-                <img
+                <WatermarkedImage
                   src={artwork.image_url}
                   alt={artwork.name}
                   className={`w-full h-full object-cover ${artwork.is_sold ? 'brightness-75' : ''}`}
@@ -130,6 +145,21 @@ export function ArtworkDetailPage() {
                   <div className="border-4 border-red-400 rounded-xl px-6 py-2 rotate-[-18deg] bg-black/10">
                     <span className="text-red-400 font-bold text-3xl tracking-widest uppercase">Sold</span>
                   </div>
+                </div>
+              )}
+
+              {/* Download button — appears on hover over image */}
+              {artwork.image_url && (
+                <div className="absolute bottom-3 right-3">
+                  <button
+                    onClick={handleDownload}
+                    disabled={downloading}
+                    title="Download with watermark"
+                    className="flex items-center gap-1.5 bg-black/60 hover:bg-black/80 disabled:opacity-60 text-white text-xs font-medium px-3 py-2 rounded-full backdrop-blur-sm transition-all duration-200"
+                  >
+                    <Download size={13} />
+                    {downloading ? 'Preparing…' : 'Download'}
+                  </button>
                 </div>
               )}
             </div>

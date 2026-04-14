@@ -139,7 +139,7 @@ export function ArtworksPage() {
                     <div key={artwork.uuid} className="bg-white rounded-xl overflow-hidden border border-earth-100 hover:shadow-md transition-shadow group">
                       <Link to={`/artworks/${artwork.uuid}`} className="relative block aspect-[4/3] overflow-hidden bg-earth-100">
                         {artwork.image_url ? (
-                          <img src={artwork.image_url} alt={artwork.name} className={`w-full h-full object-cover group-hover:scale-105 transition-transform duration-300 ${artwork.is_sold ? 'blur-sm brightness-50' : ''}`} />
+                          <img src={artwork.image_url} alt={artwork.name} draggable={false} onContextMenu={e => e.preventDefault()} className={`w-full h-full object-cover group-hover:scale-105 transition-transform duration-300 pointer-events-none ${artwork.is_sold ? 'blur-sm brightness-50' : ''}`} />
                         ) : (
                           <div className="w-full h-full flex items-center justify-center"><Image size={40} className="text-earth-300" /></div>
                         )}

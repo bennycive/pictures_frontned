@@ -37,7 +37,9 @@ function ArtworkCard({ artwork, currency }: { artwork: Artwork; currency: string
           <img
             src={artwork.image_url}
             alt={artwork.name}
-            className={`w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 ${artwork.is_sold ? 'brightness-50' : ''}`}
+            draggable={false}
+            onContextMenu={e => e.preventDefault()}
+            className={`w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 pointer-events-none ${artwork.is_sold ? 'brightness-50' : ''}`}
           />
         ) : (
           <div className="w-full h-full flex items-center justify-center">
