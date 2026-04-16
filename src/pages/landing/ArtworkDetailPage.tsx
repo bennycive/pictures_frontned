@@ -66,8 +66,8 @@ export function ArtworkDetailPage() {
       success('Added to cart!');
       setAddedToCart(true);
     } catch (err: unknown) {
-      const msg = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail;
-      error(msg || 'Failed to add to cart');
+      const data = (err as { response?: { data?: { message?: string; detail?: string } } })?.response?.data;
+      error(data?.message || data?.detail || 'Failed to add to cart.');
     } finally {
       setAddingToCart(false);
     }

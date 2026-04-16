@@ -101,7 +101,10 @@ export function ArtworksPage() {
   const doAddToCart = async (uuid: string) => {
     setAddingToCart(uuid);
     try { await cartApi.addItem(uuid); success('Added to cart!'); }
-    catch { error('Failed to add to cart'); }
+    catch (err: unknown) {
+      const data = (err as { response?: { data?: { message?: string; detail?: string } } })?.response?.data;
+      error(data?.message || data?.detail || 'Failed to add to cart.');
+    }
     finally { setAddingToCart(null); }
   };
 
