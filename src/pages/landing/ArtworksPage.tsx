@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { Search, Image, ShoppingCart, SlidersHorizontal, ChevronDown } from 'lucide-react';
 import { artworksApi, categoriesApi, cartApi } from '../../api';
@@ -22,6 +22,7 @@ export function ArtworksPage() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [priceLoading, setPriceLoading] = useState(false);
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
   const [addingToCart, setAddingToCart] = useState<string | null>(null);
@@ -29,21 +30,52 @@ export function ArtworksPage() {
   const { currencies } = useCurrencies();
   const categoryFilter = searchParams.get('category') || '';
 
-  const load = async () => {
-    setLoading(true);
-    try {
-      const [a, c] = await Promise.all([
+  // Track previous values so we know if only currency changed
+  const prevSearch = useRef(search);
+  const prevPage = useRef(page);
+  const prevCategory = useRef(categoryFilter);
+
+  useEffect(() => {
+    const onlyCurrencyChanged =
+      prevSearch.current === search &&
+      prevPage.current === page &&
+      prevCategory.current === categoryFilter;
+
+    prevSearch.current = search;
+    prevPage.current = page;
+    prevCategory.current = categoryFilter;
+
+    if (onlyCurrencyChanged && artworks.length > 0) {
+      // Background price refresh — keep the current cards visible
+      setPriceLoading(true);
+      artworksApi
+        .list({ search, page, currency, ...(categoryFilter ? { category_uuid: categoryFilter } : {}) })
+        .then(a => {
+          setArtworks(prev =>
+            prev.map(artwork => {
+              const updated = a.data.results.find(r => r.uuid === artwork.uuid);
+              return updated ? { ...artwork, pricing: updated.pricing } : artwork;
+            })
+          );
+        })
+        .catch(() => error('Failed to update prices'))
+        .finally(() => setPriceLoading(false));
+    } else {
+      // Full reload (search / page / category changed)
+      setLoading(true);
+      Promise.all([
         artworksApi.list({ search, page, currency, ...(categoryFilter ? { category_uuid: categoryFilter } : {}) }),
         categoriesApi.list(),
-      ]);
-      setArtworks(a.data.results);
-      setTotal(a.data.count);
-      setCategories(c.data.results);
-    } catch { error('Failed to load artworks'); }
-    finally { setLoading(false); }
-  };
-
-  useEffect(() => { load(); }, [search, page, currency, categoryFilter]);
+      ])
+        .then(([a, c]) => {
+          setArtworks(a.data.results);
+          setTotal(a.data.count);
+          setCategories(c.data.results);
+        })
+        .catch(() => error('Failed to load artworks'))
+        .finally(() => setLoading(false));
+    }
+  }, [search, page, currency, categoryFilter]);
 
   const doAddToCart = async (uuid: string) => {
     setAddingToCart(uuid);
@@ -89,6 +121,9 @@ export function ArtworksPage() {
                   ))}
                 </select>
                 <ChevronDown size={13} className="absolute right-2 top-1/2 -translate-y-1/2 text-earth-400 pointer-events-none" />
+                {priceLoading && (
+                  <span className="absolute -top-1 -right-1 w-2 h-2 bg-primary-400 rounded-full animate-ping" />
+                )}
               </div>
             )}
             <div className="relative w-full sm:w-72">
@@ -158,8 +193,11 @@ export function ArtworksPage() {
                         </Link>
                         <p className="text-xs text-earth-400 mt-1">{artwork.dimensions}</p>
                         <div className="mt-3 flex items-center justify-between">
-                          <div>
-                            <span className="font-bold text-primary-700">{artwork.pricing?.formatted ?? '—'}</span>
+                          <div className="flex items-center gap-2">
+                            <span className={`font-bold text-primary-700 transition-all duration-200 ${priceLoading ? 'opacity-40' : 'opacity-100'}`}>
+                              {artwork.pricing?.formatted ?? '—'}
+                            </span>
+                            {priceLoading && <span className="w-3 h-3 border-2 border-primary-300 border-t-primary-600 rounded-full animate-spin" />}
                             {artwork.is_sold && <Badge label="Sold" color="red" />}
                           </div>
                           {!artwork.is_sold && user && (

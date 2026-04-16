@@ -13,7 +13,7 @@ interface NavItem {
   icon: React.ElementType;
   to: string;
   permission?: string;
-  roles?: string[];
+  adminOnly?: boolean;
 }
 
 const navItems: NavItem[] = [
@@ -27,12 +27,12 @@ const navItems: NavItem[] = [
   { label: 'Wallet',         icon: Wallet,          to: '/dashboard/wallet' },
   { label: 'Profile',        icon: User,            to: '/dashboard/profile' },
   { label: 'Activity Logs',  icon: ClipboardList,   to: '/dashboard/activity-logs', permission: 'activity_logs.view_activitylog' },
-  { label: 'Roles',          icon: Shield,          to: '/dashboard/roles',         roles: ['Admin'] },
-  { label: 'Users',          icon: Users,           to: '/dashboard/users',         roles: ['Admin'] },
+  { label: 'Roles',          icon: Shield,          to: '/dashboard/roles',         adminOnly: true },
+  { label: 'Users',          icon: Users,           to: '/dashboard/users',         adminOnly: true },
 ];
 
 export function DashboardLayout({ children }: { children: React.ReactNode }) {
-  const { user, logout, hasPermission } = useAuth();
+  const { user, logout, hasPermission, isAdmin } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -45,7 +45,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
   }, [user?.uuid]);
 
   const visibleNav = navItems.filter(item => {
-    if (item.roles && !item.roles.some(r => user?.roles?.includes(r))) return false;
+    if (item.adminOnly && !isAdmin()) return false;
     if (item.permission && !hasPermission(item.permission)) return false;
     return true;
   });

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import React from 'react';
 import { Search, UserCheck, UserX, ShieldPlus, ShieldMinus, ChevronDown, ChevronUp } from 'lucide-react';
 import { adminUsersApi, rolesApi } from '../../api';
 import type { AdminUser, Role } from '../../api/types';
@@ -113,9 +114,9 @@ export function UsersPage() {
               {filtered.map(user => {
                 const isExpanded = expandedUuid === user.uuid;
                 return (
-                  <>
+                  <React.Fragment key={user.uuid}>
                     <tr
-                      key={user.uuid}
+                      className="hover:bg-earth-50 cursor-pointer transition-colors"
                       className="hover:bg-earth-50 cursor-pointer transition-colors"
                       onClick={() => setExpandedUuid(isExpanded ? null : user.uuid)}
                     >
@@ -279,7 +280,7 @@ export function UsersPage() {
                         </td>
                       </tr>
                     )}
-                  </>
+                  </React.Fragment>
                 );
               })}
             </tbody>

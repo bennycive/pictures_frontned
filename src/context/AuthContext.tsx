@@ -54,7 +54,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const hasPermission = (perm: string) => user?.permissions?.includes(perm) ?? false;
   const hasRole = (role: string) => user?.roles?.includes(role) ?? false;
-  const isAdmin = () => hasRole('Super Admin') || hasRole('Admin');
+  const isAdmin = () => !!user?.is_staff || hasRole('Super Admin') || hasRole('Admin');
 
   return (
     <AuthContext.Provider value={{ user, loading, login, logout, refreshUser, hasPermission, hasRole, isAdmin }}>

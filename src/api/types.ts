@@ -6,6 +6,7 @@ export interface User {
   verified_at: string | null;
   roles: string[];
   permissions: string[];
+  is_staff?: boolean;
 }
 
 export interface TokenResponse {

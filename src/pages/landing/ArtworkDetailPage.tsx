@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { ArrowLeft, ShoppingCart, Image, LogIn, Gavel, Heart, Share2, Download } from 'lucide-react';
 import { artworksApi, cartApi, auctionsApi } from '../../api';
@@ -26,6 +26,8 @@ export function ArtworkDetailPage() {
   const { currency, setCurrency } = useCurrency();
   const { currencies } = useCurrencies();
   const [loading, setLoading] = useState(true);
+  const [priceLoading, setPriceLoading] = useState(false);
+  const prevCurrency = useRef(currency);
   const [addingToCart, setAddingToCart] = useState(false);
   const [addedToCart, setAddedToCart] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -33,14 +35,27 @@ export function ArtworkDetailPage() {
 
   useEffect(() => {
     if (!uuid) return;
-    setLoading(true);
-    Promise.all([artworksApi.get(uuid, currency), auctionsApi.list()])
-      .then(([a, au]) => {
-        setArtwork(a.data);
-        setAuctions((au.data as Auction[]).filter(x => x.artwork_uuid === uuid));
-      })
-      .catch(() => error('Failed to load artwork'))
-      .finally(() => setLoading(false));
+
+    const onlyCurrencyChanged = prevCurrency.current !== currency && artwork !== null;
+    prevCurrency.current = currency;
+
+    if (onlyCurrencyChanged) {
+      // Only refresh pricing in the background
+      setPriceLoading(true);
+      artworksApi.get(uuid, currency)
+        .then(a => setArtwork(prev => prev ? { ...prev, pricing: a.data.pricing } : a.data))
+        .catch(() => error('Failed to update price'))
+        .finally(() => setPriceLoading(false));
+    } else {
+      setLoading(true);
+      Promise.all([artworksApi.get(uuid, currency), auctionsApi.list()])
+        .then(([a, au]) => {
+          setArtwork(a.data);
+          setAuctions((au.data as Auction[]).filter(x => x.artwork_uuid === uuid));
+        })
+        .catch(() => error('Failed to load artwork'))
+        .finally(() => setLoading(false));
+    }
   }, [uuid, currency]);
 
   const doAddToCart = async () => {
@@ -210,12 +225,13 @@ export function ArtworkDetailPage() {
 
             {/* Currency pill tabs */}
             {currencies.length > 0 && (
-              <div className="flex flex-wrap gap-2">
+              <div className="flex flex-wrap gap-2 items-center">
                 {currencies.map(c => (
                   <button
                     key={c.uuid}
                     onClick={() => setCurrency(c.code)}
-                    className={`px-3 py-1 text-xs font-semibold rounded-full border transition-all duration-150 ${
+                    disabled={priceLoading}
+                    className={`px-3 py-1 text-xs font-semibold rounded-full border transition-all duration-150 disabled:cursor-wait ${
                       currency === c.code
                         ? 'bg-primary-500 border-primary-500 text-white'
                         : 'bg-white dark:bg-earth-800 border-earth-200 dark:border-earth-700 text-earth-600 dark:text-earth-400 hover:border-primary-400 hover:text-primary-500'
@@ -224,13 +240,16 @@ export function ArtworkDetailPage() {
                     {c.code}
                   </button>
                 ))}
+                {priceLoading && (
+                  <span className="w-4 h-4 border-2 border-primary-300 border-t-primary-600 rounded-full animate-spin" />
+                )}
               </div>
             )}
 
             {/* Price */}
             <div>
               {artwork.pricing ? (
-                <p className="font-script text-5xl sm:text-6xl text-earth-900 dark:text-earth-100">
+                <p className={`font-script text-5xl sm:text-6xl text-earth-900 dark:text-earth-100 transition-opacity duration-200 ${priceLoading ? 'opacity-40' : 'opacity-100'}`}>
                   {artwork.pricing.formatted}
                 </p>
               ) : (
