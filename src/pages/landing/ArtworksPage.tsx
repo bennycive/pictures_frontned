@@ -18,64 +18,85 @@ export function ArtworksPage() {
   const { openAuthModal } = useAuthModal();
   const { success, error } = useToast();
   const [searchParams, setSearchParams] = useSearchParams();
+
   const [artworks, setArtworks] = useState<Artwork[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
   const [priceLoading, setPriceLoading] = useState(false);
+
+  // Raw search input (immediate UI feedback)
   const [search, setSearch] = useState('');
+  // Debounced value — what actually drives the API call
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+
   const [page, setPage] = useState(1);
   const [addingToCart, setAddingToCart] = useState<string | null>(null);
   const { currency, setCurrency } = useCurrency();
   const { currencies } = useCurrencies();
   const categoryFilter = searchParams.get('category') || '';
 
-  // Track previous values so we know if only currency changed
-  const prevSearch = useRef(search);
+  // Debounce: wait 350 ms after the user stops typing before fetching
+  useEffect(() => {
+    const t = setTimeout(() => {
+      setDebouncedSearch(search);
+      setPage(1); // reset to first page for new search
+    }, 350);
+    return () => clearTimeout(t);
+  }, [search]);
+
+  // Track previous "content" deps so we can detect currency-only changes
+  const prevSearch = useRef(debouncedSearch);
   const prevPage = useRef(page);
   const prevCategory = useRef(categoryFilter);
 
   useEffect(() => {
     const onlyCurrencyChanged =
-      prevSearch.current === search &&
+      prevSearch.current === debouncedSearch &&
       prevPage.current === page &&
       prevCategory.current === categoryFilter;
 
-    prevSearch.current = search;
+    prevSearch.current = debouncedSearch;
     prevPage.current = page;
     prevCategory.current = categoryFilter;
 
+    let cancelled = false;
+
     if (onlyCurrencyChanged && artworks.length > 0) {
-      // Background price refresh — keep the current cards visible
+      // ── Background price-only refresh ──────────────────────────
       setPriceLoading(true);
       artworksApi
-        .list({ search, page, currency, ...(categoryFilter ? { category_uuid: categoryFilter } : {}) })
+        .list({ search: debouncedSearch, page, currency, ...(categoryFilter ? { category_uuid: categoryFilter } : {}) })
         .then(a => {
+          if (cancelled) return;
           setArtworks(prev =>
             prev.map(artwork => {
-              const updated = a.data.results.find(r => r.uuid === artwork.uuid);
-              return updated ? { ...artwork, pricing: updated.pricing } : artwork;
+              const fresh = a.data.results.find(r => r.uuid === artwork.uuid);
+              return fresh ? { ...artwork, pricing: fresh.pricing } : artwork;
             })
           );
         })
-        .catch(() => error('Failed to update prices'))
-        .finally(() => setPriceLoading(false));
+        .catch(() => { if (!cancelled) error('Failed to update prices'); })
+        .finally(() => { if (!cancelled) setPriceLoading(false); });
     } else {
-      // Full reload (search / page / category changed)
+      // ── Full reload ─────────────────────────────────────────────
       setLoading(true);
       Promise.all([
-        artworksApi.list({ search, page, currency, ...(categoryFilter ? { category_uuid: categoryFilter } : {}) }),
+        artworksApi.list({ search: debouncedSearch, page, currency, ...(categoryFilter ? { category_uuid: categoryFilter } : {}) }),
         categoriesApi.list(),
       ])
         .then(([a, c]) => {
+          if (cancelled) return;
           setArtworks(a.data.results);
           setTotal(a.data.count);
           setCategories(c.data.results);
         })
-        .catch(() => error('Failed to load artworks'))
-        .finally(() => setLoading(false));
+        .catch(() => { if (!cancelled) error('Failed to load artworks'); })
+        .finally(() => { if (!cancelled) setLoading(false); });
     }
-  }, [search, page, currency, categoryFilter]);
+
+    return () => { cancelled = true; };
+  }, [debouncedSearch, page, currency, categoryFilter]);
 
   const doAddToCart = async (uuid: string) => {
     setAddingToCart(uuid);
@@ -101,6 +122,7 @@ export function ArtworksPage() {
     <div className="min-h-screen bg-earth-50">
       <Navbar />
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
           <div>
@@ -108,12 +130,13 @@ export function ArtworksPage() {
             <p className="text-earth-500 text-sm mt-1">{total} artworks available</p>
           </div>
           <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
+
             {/* Currency selector */}
             {currencies.length > 0 && (
               <div className="relative shrink-0">
                 <select
                   value={currency}
-                  onChange={e => { setCurrency(e.target.value); setPage(1); }}
+                  onChange={e => setCurrency(e.target.value)}
                   className="appearance-none pl-3 pr-7 py-2 text-sm bg-white border border-earth-200 rounded-lg text-earth-700 focus:outline-none focus:ring-2 focus:ring-primary-300 cursor-pointer"
                 >
                   {currencies.map(c => (
@@ -126,15 +149,23 @@ export function ArtworksPage() {
                 )}
               </div>
             )}
+
+            {/* Search */}
             <div className="relative w-full sm:w-72">
               <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-earth-400" />
-              <input className="input pl-9" placeholder="Search artworks..." value={search} onChange={e => { setSearch(e.target.value); setPage(1); }} />
+              <input
+                className="input pl-9"
+                placeholder="Search artworks…"
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+              />
             </div>
           </div>
         </div>
 
         <div className="flex flex-col lg:flex-row gap-6">
-          {/* Sidebar filters */}
+
+          {/* Sidebar */}
           <aside className="lg:w-56 shrink-0">
             <div className="bg-white rounded-xl border border-earth-100 p-4">
               <div className="flex items-center gap-2 mb-3 text-earth-700 font-semibold text-sm">
@@ -174,9 +205,17 @@ export function ArtworksPage() {
                     <div key={artwork.uuid} className="bg-white rounded-xl overflow-hidden border border-earth-100 hover:shadow-md transition-shadow group">
                       <Link to={`/artworks/${artwork.uuid}`} className="relative block aspect-[4/3] overflow-hidden bg-earth-100">
                         {artwork.image_url ? (
-                          <img src={artwork.image_url} alt={artwork.name} draggable={false} onContextMenu={e => e.preventDefault()} className={`w-full h-full object-cover group-hover:scale-105 transition-transform duration-300 pointer-events-none ${artwork.is_sold ? 'blur-sm brightness-50' : ''}`} />
+                          <img
+                            src={artwork.image_url}
+                            alt={artwork.name}
+                            draggable={false}
+                            onContextMenu={e => e.preventDefault()}
+                            className={`w-full h-full object-cover group-hover:scale-105 transition-transform duration-300 pointer-events-none ${artwork.is_sold ? 'blur-sm brightness-50' : ''}`}
+                          />
                         ) : (
-                          <div className="w-full h-full flex items-center justify-center"><Image size={40} className="text-earth-300" /></div>
+                          <div className="w-full h-full flex items-center justify-center">
+                            <Image size={40} className="text-earth-300" />
+                          </div>
                         )}
                         {artwork.is_sold && (
                           <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
@@ -194,10 +233,12 @@ export function ArtworksPage() {
                         <p className="text-xs text-earth-400 mt-1">{artwork.dimensions}</p>
                         <div className="mt-3 flex items-center justify-between">
                           <div className="flex items-center gap-2">
-                            <span className={`font-bold text-primary-700 transition-all duration-200 ${priceLoading ? 'opacity-40' : 'opacity-100'}`}>
+                            <span className={`font-bold text-primary-700 transition-opacity duration-200 ${priceLoading ? 'opacity-40' : 'opacity-100'}`}>
                               {artwork.pricing?.formatted ?? '—'}
                             </span>
-                            {priceLoading && <span className="w-3 h-3 border-2 border-primary-300 border-t-primary-600 rounded-full animate-spin" />}
+                            {priceLoading && (
+                              <span className="w-3 h-3 border-2 border-primary-300 border-t-primary-600 rounded-full animate-spin" />
+                            )}
                             {artwork.is_sold && <Badge label="Sold" color="red" />}
                           </div>
                           {!artwork.is_sold && user && (
@@ -219,9 +260,21 @@ export function ArtworksPage() {
                 {/* Pagination */}
                 {totalPages > 1 && (
                   <div className="flex items-center justify-center gap-2 mt-8">
-                    <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1} className="btn-secondary px-4 py-2 text-sm">Previous</button>
+                    <button
+                      onClick={() => setPage(p => Math.max(1, p - 1))}
+                      disabled={page === 1}
+                      className="btn-secondary px-4 py-2 text-sm"
+                    >
+                      Previous
+                    </button>
                     <span className="text-sm text-earth-600">Page {page} of {totalPages}</span>
-                    <button onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages} className="btn-secondary px-4 py-2 text-sm">Next</button>
+                    <button
+                      onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                      disabled={page === totalPages}
+                      className="btn-secondary px-4 py-2 text-sm"
+                    >
+                      Next
+                    </button>
                   </div>
                 )}
               </>
