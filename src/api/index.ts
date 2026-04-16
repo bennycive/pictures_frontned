@@ -1,5 +1,5 @@
 import api from './client';
-import type { Paginated, Artwork, Category, Currency, Auction, Cart, Order, Profile, Wallet, ActivityLog, TokenResponse, User } from './types';
+import type { Paginated, Artwork, Category, Currency, Auction, Cart, Order, Profile, Wallet, ActivityLog, TokenResponse, User, Role, Permission, AdminUser } from './types';
 
 // Auth
 export const authApi = {
@@ -109,6 +109,34 @@ export const walletApi = {
   get: () => api.get<Wallet>('/api/wallet/'),
   deposit: (amount: string, description?: string) =>
     api.post<Wallet>('/api/wallet/deposit/', { amount, description }),
+};
+
+// Admin — Roles
+export const rolesApi = {
+  list: () => api.get<Role[]>('/api/admin/roles/'),
+  get: (id: number) => api.get<Role>(`/api/admin/roles/${id}/`),
+  create: (data: { name: string; permission_ids?: number[] }) =>
+    api.post<Role>('/api/admin/roles/', data),
+  update: (id: number, data: { name: string; permission_ids?: number[] }) =>
+    api.put<Role>(`/api/admin/roles/${id}/`, data),
+  delete: (id: number) => api.delete(`/api/admin/roles/${id}/`),
+};
+
+// Admin — Permissions
+export const permissionsApi = {
+  list: () => api.get<Permission[]>('/api/admin/permissions/'),
+};
+
+// Admin — Users
+export const adminUsersApi = {
+  list: () => api.get<AdminUser[]>('/api/admin/users/'),
+  get: (uuid: string) => api.get<AdminUser>(`/api/admin/users/${uuid}/`),
+  update: (uuid: string, data: Partial<Pick<AdminUser, 'is_staff' | 'is_active'>>) =>
+    api.patch<AdminUser>(`/api/admin/users/${uuid}/`, data),
+  assignRole: (uuid: string, role_name: string) =>
+    api.post<AdminUser>(`/api/admin/users/${uuid}/assign-role/`, { role_name }),
+  removeRole: (uuid: string, role_name: string) =>
+    api.post<AdminUser>(`/api/admin/users/${uuid}/remove-role/`, { role_name }),
 };
 
 // Activity Logs

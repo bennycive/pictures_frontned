@@ -165,6 +165,33 @@ export interface ActivityLog {
   updated_at: string;
 }
 
+export interface Permission {
+  id: number;
+  codename: string;
+  name: string;
+  content_type: string;
+}
+
+export interface Role {
+  id: number;
+  name: string;
+  permissions: Permission[];
+  users_count: number;
+}
+
+export interface AdminUser {
+  uuid: string;
+  name: string;
+  email: string | null;
+  phone: string | null;
+  is_staff: boolean;
+  is_active: boolean;
+  verified_at: string | null;
+  roles: string[];
+  permissions: string[];
+  created_at: string;
+}
+
 export interface Paginated<T> {
   count: number;
   next: string | null;

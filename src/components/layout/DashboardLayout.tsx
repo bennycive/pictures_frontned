@@ -2,7 +2,8 @@ import { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard, Image, Tag, DollarSign, Gavel, ShoppingBag,
-  Package, User, Wallet, ClipboardList, LogOut, Menu, ChevronRight
+  Package, User, Wallet, ClipboardList, LogOut, Menu, ChevronRight,
+  Shield, Users
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { profileApi } from '../../api';
@@ -26,6 +27,8 @@ const navItems: NavItem[] = [
   { label: 'Wallet',         icon: Wallet,          to: '/dashboard/wallet' },
   { label: 'Profile',        icon: User,            to: '/dashboard/profile' },
   { label: 'Activity Logs',  icon: ClipboardList,   to: '/dashboard/activity-logs', permission: 'activity_logs.view_activitylog' },
+  { label: 'Roles',          icon: Shield,          to: '/dashboard/roles',         roles: ['Admin'] },
+  { label: 'Users',          icon: Users,           to: '/dashboard/users',         roles: ['Admin'] },
 ];
 
 export function DashboardLayout({ children }: { children: React.ReactNode }) {
@@ -42,8 +45,9 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
   }, [user?.uuid]);
 
   const visibleNav = navItems.filter(item => {
-    if (!item.permission) return true;
-    return hasPermission(item.permission);
+    if (item.roles && !item.roles.some(r => user?.roles?.includes(r))) return false;
+    if (item.permission && !hasPermission(item.permission)) return false;
+    return true;
   });
 
   const handleLogout = async () => {

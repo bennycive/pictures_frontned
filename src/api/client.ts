@@ -57,8 +57,16 @@ apiClient.interceptors.response.use(
           original.headers.Authorization = `Bearer ${data.access}`;
           return apiClient(original);
         } catch {
-          localStorage.clear();
-          window.location.href = '/login';
+          localStorage.removeItem('access_token');
+          localStorage.removeItem('refresh_token');
+          // On dashboard pages the user must log in again; on public pages
+          // just retry without auth so the page still loads.
+          if (window.location.pathname.startsWith('/dashboard')) {
+            window.location.href = '/login';
+          } else {
+            delete original.headers.Authorization;
+            return apiClient(original);
+          }
         }
       }
     }

@@ -34,6 +34,8 @@ import { CartPage } from './pages/dashboard/CartPage';
 import { WalletPage } from './pages/dashboard/WalletPage';
 import { ProfilePage } from './pages/dashboard/ProfilePage';
 import { ActivityLogsPage } from './pages/dashboard/ActivityLogsPage';
+import { RolesPage } from './pages/dashboard/RolesPage';
+import { UsersPage } from './pages/dashboard/UsersPage';
 
 function DashboardWrapper({ children }: { children: React.ReactNode }) {
   return (
@@ -79,6 +81,8 @@ export default function App() {
             <Route path="/dashboard/wallet" element={<DashboardWrapper><WalletPage /></DashboardWrapper>} />
             <Route path="/dashboard/profile" element={<DashboardWrapper><ProfilePage /></DashboardWrapper>} />
             <Route path="/dashboard/activity-logs" element={<DashboardWrapper><ActivityLogsPage /></DashboardWrapper>} />
+            <Route path="/dashboard/roles" element={<DashboardWrapper><RolesPage /></DashboardWrapper>} />
+            <Route path="/dashboard/users" element={<DashboardWrapper><UsersPage /></DashboardWrapper>} />
 
             {/* Fallback */}
             <Route path="*" element={<Navigate to="/" replace />} />
