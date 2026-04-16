@@ -1,8 +1,10 @@
 import { useEffect, useState, useCallback, memo } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { ArrowLeft, Gavel, TrendingUp, Clock, LogIn, Image, Wifi, WifiOff } from 'lucide-react';
+import { ArrowLeft, Gavel, TrendingUp, Clock, LogIn, Image, Wifi, WifiOff, ChevronDown } from 'lucide-react';
 import { auctionsApi } from '../../api';
-import type { Auction } from '../../api/types';
+import type { Auction, Currency } from '../../api/types';
+import { useCurrency } from '../../hooks/useCurrency';
+import { useCurrencies } from '../../hooks/useCurrencies';
 import { Navbar } from '../../components/layout/Navbar';
 import { Footer } from '../../components/layout/Footer';
 import { StatusBadge } from '../../components/ui/Badge';
@@ -13,7 +15,34 @@ import { useAuth } from '../../context/AuthContext';
 import { useAuthModal } from '../../context/AuthModalContext';
 import { useAuctionSocket } from '../../hooks/useAuctionSocket';
 
-/* Fields that never change after the auction is created */
+/* ── Currency conversion ─────────────────────────────────────────── */
+function convertPrice(
+  amount: string | null | undefined,
+  fromCode: string,
+  toCode: string,
+  currencies: Currency[]
+): { display: string; original: string | null } {
+  const raw = parseFloat(amount || '0');
+  const originalStr = `${fromCode} ${raw.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+
+  if (!amount || fromCode === toCode || currencies.length === 0) {
+    return { display: originalStr, original: null };
+  }
+
+  const fromRate = parseFloat(currencies.find(c => c.code === fromCode)?.rate ?? '1');
+  const toRate   = parseFloat(currencies.find(c => c.code === toCode)?.rate   ?? '1');
+  const sym      = currencies.find(c => c.code === toCode)?.symbol ?? toCode;
+
+  if (!fromRate || !toRate) return { display: originalStr, original: null };
+
+  const converted = (raw / fromRate) * toRate;
+  return {
+    display: `${sym} ${converted.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+    original: originalStr,
+  };
+}
+
+/* ── Types ───────────────────────────────────────────────────────── */
 type AuctionBase = Pick<
   Auction,
   'uuid' | 'artwork_uuid' | 'artwork_name' | 'artwork_image' |
@@ -21,23 +50,18 @@ type AuctionBase = Pick<
   'bid_increment' | 'start_price' | 'currency'
 >;
 
-/* Fields that change on every bid / status change */
 type AuctionLive = Pick<
   Auction,
   'status' | 'current_price' | 'minimum_next_bid' |
   'total_bids' | 'top_bids' | 'winner_name'
 >;
 
-/* ── Static section — memoised: only renders once ────────────────── */
+/* ── Static image — memoised ─────────────────────────────────────── */
 const AuctionStatic = memo(function AuctionStatic({ base }: { base: AuctionBase }) {
   return (
     <div className="bg-white rounded-2xl overflow-hidden border border-earth-100 shadow-sm">
       {base.artwork_image ? (
-        <img
-          src={base.artwork_image}
-          alt={base.artwork_name}
-          className="w-full aspect-square object-cover"
-        />
+        <img src={base.artwork_image} alt={base.artwork_name} className="w-full aspect-square object-cover" />
       ) : (
         <div className="w-full aspect-square bg-earth-50 flex items-center justify-center">
           <Image size={80} className="text-earth-200" />
@@ -47,7 +71,7 @@ const AuctionStatic = memo(function AuctionStatic({ base }: { base: AuctionBase 
   );
 });
 
-/* ── Countdown — isolated so only it re-renders every second ─────── */
+/* ── Countdown ───────────────────────────────────────────────────── */
 function Countdown({ endTime }: { endTime: string }) {
   const [timeLeft, setTimeLeft] = useState('');
   useEffect(() => {
@@ -57,9 +81,7 @@ function Countdown({ endTime }: { endTime: string }) {
       const h = Math.floor(diff / 3600000);
       const m = Math.floor((diff % 3600000) / 60000);
       const s = Math.floor((diff % 60000) / 1000);
-      setTimeLeft(
-        `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`
-      );
+      setTimeLeft(`${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`);
     };
     update();
     const t = setInterval(update, 1000);
@@ -77,24 +99,21 @@ function Countdown({ endTime }: { endTime: string }) {
   );
 }
 
-/* ── Top bids list — only re-renders when top_bids changes ──────── */
+/* ── Top bids — memoised, re-renders only when bids or currency changes */
 const TopBids = memo(function TopBids({
   topBidsJson,
-  currency,
+  nativeCurrency,
+  displayCurrency,
+  currencies,
 }: {
   topBidsJson: string;
-  currency: string;
+  nativeCurrency: string;
+  displayCurrency: string;
+  currencies: Currency[];
 }) {
   const bids = (() => {
-    try {
-      return JSON.parse(topBidsJson) as Array<{
-        bidder_name: string;
-        amount: string;
-        is_winning: boolean;
-      }>;
-    } catch {
-      return [];
-    }
+    try { return JSON.parse(topBidsJson) as Array<{ bidder_name: string; amount: string; is_winning: boolean }>; }
+    catch { return []; }
   })();
 
   if (bids.length === 0) return null;
@@ -105,33 +124,67 @@ const TopBids = memo(function TopBids({
         <TrendingUp size={16} className="text-primary-600" /> Top Bids
       </h3>
       <div className="space-y-2">
-        {bids.map((bid, i) => (
-          <div
-            key={i}
-            className={`flex items-center justify-between p-3 rounded-xl ${
-              bid.is_winning
-                ? 'bg-green-50 border border-green-100'
-                : 'bg-earth-50'
-            }`}
-          >
-            <div className="flex items-center gap-2">
-              {bid.is_winning && (
-                <span className="w-2 h-2 bg-green-500 rounded-full shrink-0 animate-pulse" />
-              )}
-              <span className="text-sm font-medium text-earth-800">{bid.bidder_name}</span>
-              {bid.is_winning && (
-                <span className="text-xs text-green-600 font-medium">Winning</span>
-              )}
+        {bids.map((bid, i) => {
+          const { display, original } = convertPrice(bid.amount, nativeCurrency, displayCurrency, currencies);
+          return (
+            <div
+              key={i}
+              className={`flex items-center justify-between p-3 rounded-xl ${bid.is_winning ? 'bg-green-50 border border-green-100' : 'bg-earth-50'}`}
+            >
+              <div className="flex items-center gap-2">
+                {bid.is_winning && <span className="w-2 h-2 bg-green-500 rounded-full shrink-0 animate-pulse" />}
+                <span className="text-sm font-medium text-earth-800">{bid.bidder_name}</span>
+                {bid.is_winning && <span className="text-xs text-green-600 font-medium">Winning</span>}
+              </div>
+              <div className="text-right">
+                <span className={`font-bold text-sm ${bid.is_winning ? 'text-green-700' : 'text-earth-700'}`}>
+                  {display}
+                </span>
+                {original && (
+                  <p className="text-[10px] text-earth-400">{original}</p>
+                )}
+              </div>
             </div>
-            <span className={`font-bold text-sm ${bid.is_winning ? 'text-green-700' : 'text-earth-700'}`}>
-              {currency} {bid.amount}
-            </span>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );
 });
+
+/* ── Price card ──────────────────────────────────────────────────── */
+function PriceCard({
+  label,
+  amount,
+  nativeCurrency,
+  displayCurrency,
+  currencies,
+  flash = false,
+  flashClass = '',
+  baseClass = '',
+  textClass = '',
+}: {
+  label: string;
+  amount: string | null | undefined;
+  nativeCurrency: string;
+  displayCurrency: string;
+  currencies: Currency[];
+  flash?: boolean;
+  flashClass?: string;
+  baseClass?: string;
+  textClass?: string;
+}) {
+  const { display, original } = convertPrice(amount, nativeCurrency, displayCurrency, currencies);
+  return (
+    <div className={`rounded-xl p-4 transition-colors duration-700 ${flash ? flashClass : baseClass}`}>
+      <p className="text-xs mb-1 opacity-60">{label}</p>
+      <p className={`text-xl font-bold transition-colors duration-700 ${flash ? '' : textClass}`}>
+        {display}
+      </p>
+      {original && <p className="text-[10px] opacity-50 mt-0.5">{original}</p>}
+    </div>
+  );
+}
 
 /* ── Main page ───────────────────────────────────────────────────── */
 export function AuctionDetailPublicPage() {
@@ -139,6 +192,8 @@ export function AuctionDetailPublicPage() {
   const { user, hasPermission } = useAuth();
   const { success, error } = useToast();
   const { openAuthModal } = useAuthModal();
+  const { currency, setCurrency } = useCurrency();
+  const { currencies } = useCurrencies();
 
   const [base, setBase] = useState<AuctionBase | null>(null);
   const [live, setLive] = useState<AuctionLive | null>(null);
@@ -151,7 +206,6 @@ export function AuctionDetailPublicPage() {
 
   const canBid = hasPermission('accounts.place_bids');
 
-  /* Load once — split into base + live */
   const load = useCallback(async () => {
     if (!uuid) return;
     try {
@@ -186,7 +240,6 @@ export function AuctionDetailPublicPage() {
 
   useEffect(() => { load(); }, [load]);
 
-  /* WebSocket — only updates live state, base never touched */
   const handleSocketUpdate = useCallback((patch: Partial<Auction>) => {
     setConnected(true);
     setLive(prev => {
@@ -206,10 +259,7 @@ export function AuctionDetailPublicPage() {
 
   const handleBidClick = () => {
     if (!user) {
-      openAuthModal({
-        hint: 'Sign in to place your bid',
-        onSuccess: () => setBidModalOpen(true),
-      });
+      openAuthModal({ hint: 'Sign in to place your bid', onSuccess: () => setBidModalOpen(true) });
       return;
     }
     setBidModalOpen(true);
@@ -223,9 +273,6 @@ export function AuctionDetailPublicPage() {
       await auctionsApi.bid(uuid, bidAmount);
       success('Bid placed!');
       setBidModalOpen(false);
-      /* Patch live state — no full re-fetch needed.
-         The WS will push the authoritative update to all other clients.
-         We refresh once to get the server-calculated minimum_next_bid. */
       const { data } = await auctionsApi.get(uuid);
       setLive({
         status: data.status,
@@ -246,9 +293,7 @@ export function AuctionDetailPublicPage() {
     }
   };
 
-  if (loading) return (
-    <div className="min-h-screen bg-earth-50"><Navbar /><PageSpinner /></div>
-  );
+  if (loading) return <div className="min-h-screen bg-earth-50"><Navbar /><PageSpinner /></div>;
   if (!base || !live) return (
     <div className="min-h-screen bg-earth-50">
       <Navbar />
@@ -259,34 +304,53 @@ export function AuctionDetailPublicPage() {
     </div>
   );
 
+  const minBidConverted = convertPrice(live.minimum_next_bid, base.currency, currency, currencies);
+
   return (
     <div className="min-h-screen bg-earth-50">
       <Navbar />
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
 
         {/* Header row */}
-        <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center justify-between mb-6 flex-wrap gap-3">
           <Link to="/auctions" className="inline-flex items-center gap-2 text-earth-500 hover:text-earth-700 text-sm transition-colors">
             <ArrowLeft size={16} /> Back to Auctions
           </Link>
-          {live.status === 'live' && (
-            <div className={`flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-full border transition-colors ${
-              connected
-                ? 'text-green-700 bg-green-50 border-green-200'
-                : 'text-earth-500 bg-earth-100 border-earth-200'
-            }`}>
-              {connected ? <Wifi size={13} /> : <WifiOff size={13} />}
-              {connected ? 'Live' : 'Connecting...'}
-            </div>
-          )}
+
+          <div className="flex items-center gap-3">
+            {/* Currency selector */}
+            {currencies.length > 0 && (
+              <div className="relative">
+                <select
+                  value={currency}
+                  onChange={e => setCurrency(e.target.value)}
+                  className="appearance-none pl-3 pr-7 py-1.5 text-sm bg-white border border-earth-200 rounded-lg text-earth-700 focus:outline-none focus:ring-2 focus:ring-primary-300 cursor-pointer"
+                >
+                  {currencies.map(c => (
+                    <option key={c.uuid} value={c.code}>{c.code}</option>
+                  ))}
+                </select>
+                <ChevronDown size={12} className="absolute right-2 top-1/2 -translate-y-1/2 text-earth-400 pointer-events-none" />
+              </div>
+            )}
+
+            {live.status === 'live' && (
+              <div className={`flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-full border transition-colors ${
+                connected ? 'text-green-700 bg-green-50 border-green-200' : 'text-earth-500 bg-earth-100 border-earth-200'
+              }`}>
+                {connected ? <Wifi size={13} /> : <WifiOff size={13} />}
+                {connected ? 'Live' : 'Connecting...'}
+              </div>
+            )}
+          </div>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
 
-          {/* Static — never re-renders on bid updates */}
+          {/* Static image */}
           <AuctionStatic base={base} />
 
-          {/* Live — only this re-renders on each bid */}
+          {/* Live panel */}
           <div className="space-y-4">
             <div className="bg-white rounded-2xl border border-earth-100 p-6 space-y-4">
               <div className="flex items-start justify-between gap-3">
@@ -297,31 +361,45 @@ export function AuctionDetailPublicPage() {
                 Listed by <span className="font-medium text-earth-700">{base.created_by_name}</span>
               </p>
 
-              {/* Countdown — isolated, ticks every second without touching other state */}
               {live.status === 'live' && <Countdown endTime={base.end_time} />}
 
-              {/* Price cards — flash on new bid */}
+              {/* Price cards */}
               <div className="grid grid-cols-2 gap-3">
-                <div className={`rounded-xl p-4 transition-colors duration-700 ${flash ? 'bg-green-100 border border-green-300' : 'bg-primary-50'}`}>
-                  <p className="text-xs text-primary-500 mb-1">Current Bid</p>
-                  <p className={`text-2xl font-bold transition-colors duration-700 ${flash ? 'text-green-700' : 'text-primary-700'}`}>
-                    {base.currency} {live.current_price || base.start_price}
-                  </p>
-                </div>
-                <div className="bg-earth-50 rounded-xl p-4">
-                  <p className="text-xs text-earth-400 mb-1">Minimum Next Bid</p>
-                  <p className="text-2xl font-bold text-earth-800">{base.currency} {live.minimum_next_bid}</p>
-                </div>
+                <PriceCard
+                  label="Current Bid"
+                  amount={live.current_price || base.start_price}
+                  nativeCurrency={base.currency}
+                  displayCurrency={currency}
+                  currencies={currencies}
+                  flash={flash}
+                  flashClass="bg-green-100 border border-green-300 text-green-700"
+                  baseClass="bg-primary-50"
+                  textClass="text-primary-700"
+                />
+                <PriceCard
+                  label="Minimum Next Bid"
+                  amount={live.minimum_next_bid}
+                  nativeCurrency={base.currency}
+                  displayCurrency={currency}
+                  currencies={currencies}
+                  baseClass="bg-earth-50"
+                  textClass="text-earth-800"
+                />
                 <div className="bg-earth-50 rounded-xl p-4">
                   <p className="text-xs text-earth-400 mb-1">Total Bids</p>
                   <p className="text-lg font-bold text-earth-800 flex items-center gap-1.5">
                     <TrendingUp size={16} className="text-earth-400" /> {live.total_bids}
                   </p>
                 </div>
-                <div className="bg-earth-50 rounded-xl p-4">
-                  <p className="text-xs text-earth-400 mb-1">Bid Increment</p>
-                  <p className="text-lg font-bold text-earth-800">{base.currency} {base.bid_increment}</p>
-                </div>
+                <PriceCard
+                  label="Bid Increment"
+                  amount={base.bid_increment}
+                  nativeCurrency={base.currency}
+                  displayCurrency={currency}
+                  currencies={currencies}
+                  baseClass="bg-earth-50"
+                  textClass="text-earth-800"
+                />
               </div>
 
               {live.status === 'ended' && live.winner_name && (
@@ -359,9 +437,7 @@ export function AuctionDetailPublicPage() {
                 ) : live.status === 'pending' ? (
                   <div className="bg-yellow-50 border border-yellow-100 rounded-xl p-4 text-center">
                     <p className="text-yellow-700 font-medium text-sm">Auction hasn't started yet</p>
-                    <p className="text-yellow-600 text-xs mt-1">
-                      Starts {new Date(base.start_time).toLocaleString()}
-                    </p>
+                    <p className="text-yellow-600 text-xs mt-1">Starts {new Date(base.start_time).toLocaleString()}</p>
                   </div>
                 ) : (
                   <div className="bg-earth-50 border border-earth-100 rounded-xl p-4 text-center">
@@ -371,17 +447,25 @@ export function AuctionDetailPublicPage() {
               </div>
             </div>
 
-            {/* Top bids — memo'd, only re-renders when top_bids JSON changes */}
-            <TopBids topBidsJson={live.top_bids} currency={base.currency} />
+            {/* Top bids */}
+            <TopBids
+              topBidsJson={live.top_bids}
+              nativeCurrency={base.currency}
+              displayCurrency={currency}
+              currencies={currencies}
+            />
           </div>
         </div>
       </div>
 
-      {/* Bid modal */}
+      {/* Bid modal — bidding is always in the auction's native currency */}
       <Modal open={bidModalOpen} onClose={() => setBidModalOpen(false)} title="Place a Bid" size="sm">
         <form onSubmit={handleBid} className="space-y-4">
           <div className="bg-primary-50 border border-primary-100 rounded-xl p-4 text-sm text-primary-700">
-            Minimum bid: <strong>{base.currency} {live.minimum_next_bid}</strong>
+            <p>Minimum bid: <strong>{base.currency} {live.minimum_next_bid}</strong></p>
+            {minBidConverted.original && (
+              <p className="text-xs text-primary-500 mt-0.5">≈ {minBidConverted.display}</p>
+            )}
           </div>
           <div>
             <label className="block text-sm font-medium text-earth-700 mb-1.5">
