@@ -1,17 +1,61 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Navbar } from '../../components/layout/Navbar';
 import { Footer } from '../../components/layout/Footer';
 import { Mail, MapPin, Phone, Send, MessageSquare } from 'lucide-react';
+import { siteApi } from '../../api';
+import type { ContactInfo } from '../../api/types';
+import { useToast } from '../../components/ui/Toast';
+import { SliderCaptcha } from '../../components/ui/SliderCaptcha';
+
+const DEFAULT_INFO: ContactInfo = {
+  email: 'hello@afristudio.art',
+  phone: '+255 712 345 678',
+  location: 'Dar es Salaam, Tanzania',
+  updated_at: '',
+};
 
 export function ContactPage() {
+  const { success, error } = useToast();
   const [form, setForm] = useState({ name: '', email: '', subject: '', message: '' });
   const [sent, setSent] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [humanVerified, setHumanVerified] = useState(false);
+  const [captchaKey, setCaptchaKey] = useState(0);
+  const [info, setInfo] = useState<ContactInfo>(DEFAULT_INFO);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  useEffect(() => {
+    siteApi.getContactInfo()
+      .then(res => setInfo(res.data))
+      .catch(() => {/* use defaults */});
+  }, []);
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // In production this would POST to an API
-    setSent(true);
+    setLoading(true);
+    if (!humanVerified) {
+      error('Please complete the slider verification first.');
+      setLoading(false);
+      return;
+    }
+    try {
+      await siteApi.submitContact(form);
+      setSent(true);
+      success('Message sent!');
+    } catch {
+      error('Failed to send message. Please try again.');
+      // Reset captcha so user must re-verify on retry
+      setHumanVerified(false);
+      setCaptchaKey(k => k + 1);
+    } finally {
+      setLoading(false);
+    }
   };
+
+  const contactItems = [
+    { icon: Mail,    label: 'Email',    value: info.email },
+    { icon: Phone,   label: 'Phone',    value: info.phone },
+    { icon: MapPin,  label: 'Location', value: info.location },
+  ];
 
   return (
     <div className="min-h-screen bg-earth-50 dark:bg-earth-950 transition-colors duration-300 flex flex-col">
@@ -40,11 +84,7 @@ export function ContactPage() {
             <div>
               <h2 className="font-display text-2xl font-bold text-earth-900 dark:text-earth-100 mb-6">Contact Information</h2>
               <div className="space-y-5">
-                {[
-                  { icon: Mail, label: 'Email', value: 'hello@afristudio.art' },
-                  { icon: Phone, label: 'Phone', value: '+255 712 345 678' },
-                  { icon: MapPin, label: 'Location', value: 'Dar es Salaam, Tanzania' },
-                ].map(item => (
+                {contactItems.map(item => (
                   <div key={item.label} className="flex gap-4 items-start">
                     <div className="w-10 h-10 shrink-0 bg-primary-100 dark:bg-primary-900/40 rounded-lg flex items-center justify-center">
                       <item.icon size={18} className="text-primary-600 dark:text-primary-400" />
@@ -78,7 +118,7 @@ export function ContactPage() {
                   <h3 className="font-display text-2xl font-bold text-earth-900 dark:text-earth-100 mb-2">Message Sent!</h3>
                   <p className="text-earth-500 dark:text-earth-400 text-sm">We'll get back to you within 24 hours.</p>
                   <button
-                    onClick={() => { setSent(false); setForm({ name: '', email: '', subject: '', message: '' }); }}
+                    onClick={() => { setSent(false); setForm({ name: '', email: '', subject: '', message: '' }); setHumanVerified(false); setCaptchaKey(k => k + 1); }}
                     className="mt-6 text-sm text-primary-600 dark:text-primary-400 hover:underline"
                   >
                     Send another message
@@ -132,11 +172,16 @@ export function ContactPage() {
                       className="w-full border border-earth-200 dark:border-earth-600 rounded-lg px-3 py-2.5 text-sm text-earth-900 dark:text-earth-100 bg-earth-50 dark:bg-earth-700 focus:outline-none focus:ring-2 focus:ring-primary-400 focus:border-transparent placeholder-earth-400 dark:placeholder-earth-500 resize-none"
                     />
                   </div>
+                  <SliderCaptcha
+                    resetKey={captchaKey}
+                    onVerified={() => setHumanVerified(true)}
+                  />
                   <button
                     type="submit"
-                    className="w-full inline-flex items-center justify-center gap-2 bg-primary-600 hover:bg-primary-500 text-white font-semibold px-6 py-3 rounded-xl transition-all duration-200 shadow-sm hover:shadow-md"
+                    disabled={loading || !humanVerified}
+                    className="w-full inline-flex items-center justify-center gap-2 bg-primary-600 hover:bg-primary-500 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold px-6 py-3 rounded-xl transition-all duration-200 shadow-sm hover:shadow-md"
                   >
-                    <Send size={16} /> Send Message
+                    <Send size={16} /> {loading ? 'Sending...' : 'Send Message'}
                   </button>
                 </form>
               )}

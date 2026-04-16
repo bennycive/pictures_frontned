@@ -3,10 +3,10 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard, Image, Tag, DollarSign, Gavel, ShoppingBag,
   Package, User, Wallet, ClipboardList, LogOut, Menu, ChevronRight,
-  Shield, Users
+  Shield, Users, Settings2, Inbox
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
-import { profileApi } from '../../api';
+import { profileApi, siteApi } from '../../api';
 
 interface NavItem {
   label: string;
@@ -29,6 +29,8 @@ const navItems: NavItem[] = [
   { label: 'Activity Logs',  icon: ClipboardList,   to: '/dashboard/activity-logs', permission: 'activity_logs.view_activitylog' },
   { label: 'Roles',          icon: Shield,          to: '/dashboard/roles',         adminOnly: true },
   { label: 'Users',          icon: Users,           to: '/dashboard/users',         adminOnly: true },
+  { label: 'Messages',       icon: Inbox,           to: '/dashboard/messages',      adminOnly: true },
+  { label: 'Site Config',    icon: Settings2,       to: '/dashboard/site-config',   adminOnly: true },
 ];
 
 export function DashboardLayout({ children }: { children: React.ReactNode }) {
@@ -37,12 +39,25 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [unreadCount, setUnreadCount] = useState(0);
 
   useEffect(() => {
     profileApi.get()
       .then(res => setAvatarUrl(res.data.avatar_url || null))
       .catch(() => {});
   }, [user?.uuid]);
+
+  useEffect(() => {
+    if (!isAdmin()) return;
+    const fetchCount = () =>
+      siteApi.getUnreadCount()
+        .then(res => setUnreadCount(res.data.count))
+        .catch(() => {});
+    fetchCount();
+    // Refresh every 60 s while the dashboard is open
+    const t = setInterval(fetchCount, 60_000);
+    return () => clearInterval(t);
+  }, [user?.uuid]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const visibleNav = navItems.filter(item => {
     if (item.adminOnly && !isAdmin()) return false;
@@ -109,7 +124,17 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
             >
               <Icon size={18} className={active ? 'text-primary-600' : 'text-earth-400'} />
               {item.label}
-              {active && <ChevronRight size={14} className="ml-auto text-primary-400" />}
+              {item.to === '/dashboard/messages' && unreadCount > 0 && (
+                <span className="ml-auto min-w-[20px] h-5 px-1.5 bg-green-500 text-white text-[11px] font-bold rounded-full flex items-center justify-center">
+                  {unreadCount > 99 ? '99+' : unreadCount}
+                </span>
+              )}
+              {active && item.to !== '/dashboard/messages' && (
+                <ChevronRight size={14} className="ml-auto text-primary-400" />
+              )}
+              {active && item.to === '/dashboard/messages' && unreadCount === 0 && (
+                <ChevronRight size={14} className="ml-auto text-primary-400" />
+              )}
             </Link>
           );
         })}

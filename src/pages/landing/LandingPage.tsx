@@ -2,8 +2,8 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowRight, Eye, ShoppingCart, Image, Clock, ChevronDown } from 'lucide-react';
 import { Footer } from '../../components/layout/Footer';
-import { artworksApi, auctionsApi, categoriesApi } from '../../api';
-import type { Artwork, Auction, Category } from '../../api/types';
+import { artworksApi, auctionsApi, categoriesApi, siteApi } from '../../api';
+import type { Artwork, Auction, Category, HeroContent } from '../../api/types';
 import { Navbar } from '../../components/layout/Navbar';
 import { StatusBadge } from '../../components/ui/Badge';
 import { Spinner } from '../../components/ui/Spinner';
@@ -135,20 +135,28 @@ function AuctionCard({ auction }: { auction: Auction }) {
 /* ─── Landing Page ──────────────────────────────────────────────── */
 export function LandingPage() {
   const [artworks, setArtworks] = useState<Artwork[]>([]);
-  const [heroArtworks, setHeroArtworks] = useState<Artwork[]>([]);
   const [auctions, setAuctions] = useState<Auction[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const { currency, setCurrency } = useCurrency();
   const [loading, setLoading] = useState(true);
   const [artworksLoading, setArtworksLoading] = useState(false);
   const { currencies } = useCurrencies();
+  const [heroImage, setHeroImage] = useState<string | null>(null);
+  const [heroContent, setHeroContent] = useState<HeroContent>({
+    tagline: 'Welcome to',
+    title: 'Afristudio',
+    subtitle: 'Discover the soul of Africa through exceptional artworks that celebrate tradition, modernity, and the enduring spirit of the continent.',
+    cta_text: 'Explore Gallery',
+    cta_link: '/artworks',
+    updated_at: '',
+  });
 
   useEffect(() => {
-    artworksApi.list()
-      .then(res => {
-        const imgs = (res.data.results || []).filter((a: Artwork) => a.image_url);
-        setHeroArtworks(imgs.slice(0, 1));
-      })
+    siteApi.getHero()
+      .then(res => { if (res.data.image_url) setHeroImage(res.data.image_url); })
+      .catch(() => {});
+    siteApi.getHeroContent()
+      .then(res => setHeroContent(res.data))
       .catch(() => {});
   }, []);
 
@@ -169,7 +177,6 @@ export function LandingPage() {
   }, [currency]);
 
   const liveAuctions = auctions.filter(a => a.status === 'live');
-  const heroImage = heroArtworks[0]?.image_url ?? null;
 
   return (
     <div className="min-h-screen bg-earth-50 dark:bg-earth-950 transition-colors duration-300">
@@ -189,20 +196,19 @@ export function LandingPage() {
         {/* Hero content */}
         <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full">
           <div className="max-w-xl">
-            <p className="text-primary-300 italic text-lg mb-1 animate-fade-in">Welcome to</p>
+            <p className="text-primary-300 italic text-lg mb-1 animate-fade-in">{heroContent.tagline}</p>
             <h1 className="font-script text-7xl sm:text-8xl lg:text-9xl text-white leading-none mb-6 animate-fade-up">
-              Afristudio
+              {heroContent.title}
             </h1>
             <p className="text-white/80 text-base sm:text-lg leading-relaxed mb-8 max-w-sm animate-fade-up" style={{ animationDelay: '0.2s' }}>
-              Discover the soul of Africa through exceptional artworks that celebrate tradition,
-              modernity, and the enduring spirit of the continent.
+              {heroContent.subtitle}
             </p>
             <Link
-              to="/artworks"
+              to={heroContent.cta_link}
               className="inline-flex items-center gap-2 bg-primary-500 hover:bg-primary-400 text-white font-semibold px-7 py-3.5 rounded-full transition-all duration-200 shadow-lg hover:shadow-primary-500/40 hover:scale-105 animate-fade-up"
               style={{ animationDelay: '0.3s' }}
             >
-              Explore Gallery <ArrowRight size={16} />
+              {heroContent.cta_text} <ArrowRight size={16} />
             </Link>
           </div>
         </div>

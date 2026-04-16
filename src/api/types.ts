@@ -199,3 +199,35 @@ export interface Paginated<T> {
   previous: string | null;
   results: T[];
 }
+
+export interface HeroContent {
+  tagline: string;
+  title: string;
+  subtitle: string;
+  cta_text: string;
+  cta_link: string;
+  updated_at: string;
+}
+
+export interface LandingHero {
+  image_url: string | null;
+  updated_at: string;
+}
+
+export interface ContactInfo {
+  email: string;
+  phone: string;
+  location: string;
+  updated_at: string;
+}
+
+export interface ContactMessage {
+  id: number;
+  name: string;
+  email: string;
+  subject: string;
+  message: string;
+  status: 'new' | 'read' | 'unread';
+  created_at: string;
+  updated_at: string;
+}

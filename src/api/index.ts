@@ -1,5 +1,5 @@
 import api from './client';
-import type { Paginated, Artwork, Category, Currency, Auction, Cart, Order, Profile, Wallet, ActivityLog, TokenResponse, User, Role, Permission, AdminUser } from './types';
+import type { Paginated, Artwork, Category, Currency, Auction, Cart, Order, Profile, Wallet, ActivityLog, TokenResponse, User, Role, Permission, AdminUser, HeroContent, LandingHero, ContactInfo, ContactMessage } from './types';
 
 // Auth
 export const authApi = {
@@ -143,4 +143,32 @@ export const adminUsersApi = {
 export const activityLogsApi = {
   list: (params?: Record<string, unknown>) =>
     api.get<Paginated<ActivityLog>>('/api/activity-logs/', { params }),
+};
+
+// Site Config
+export const siteApi = {
+  // Landing hero text content
+  getHeroContent: () => api.get<HeroContent>('/api/site/hero-content/'),
+  updateHeroContent: (data: Partial<Omit<HeroContent, 'updated_at'>>) =>
+    api.patch<HeroContent>('/api/site/hero-content/', data),
+
+  // Landing hero image
+  getHero: () => api.get<LandingHero>('/api/site/hero/'),
+  updateHero: (data: FormData) =>
+    api.put<LandingHero>('/api/site/hero/', data, { headers: { 'Content-Type': 'multipart/form-data' } }),
+
+  // Contact info
+  getContactInfo: () => api.get<ContactInfo>('/api/site/contact-info/'),
+  updateContactInfo: (data: Partial<ContactInfo>) =>
+    api.patch<ContactInfo>('/api/site/contact-info/', data),
+
+  // Contact messages
+  submitContact: (data: { name: string; email: string; subject: string; message: string }) =>
+    api.post<{ detail: string }>('/api/site/contact/', data),
+  getUnreadCount: () =>
+    api.get<{ count: number }>('/api/site/contact/messages/unread-count/'),
+  listMessages: (params?: Record<string, unknown>) =>
+    api.get<Paginated<ContactMessage>>('/api/site/contact/messages/', { params }),
+  updateMessageStatus: (id: number, status: 'new' | 'read' | 'unread') =>
+    api.patch<ContactMessage>(`/api/site/contact/messages/${id}/status/`, { status }),
 };
