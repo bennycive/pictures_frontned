@@ -4,6 +4,7 @@ import { rolesApi, permissionsApi } from '../../api';
 import type { Role, Permission } from '../../api/types';
 import { Spinner } from '../../components/ui/Spinner';
 import { useToast } from '../../components/ui/Toast';
+import { swal } from '../../lib/swal';
 
 export function RolesPage() {
   const { success, error } = useToast();
@@ -68,7 +69,9 @@ export function RolesPage() {
     finally { setSaving(false); }
   };
 
-  const handleDelete = async (id: number) => {
+  const handleDelete = async (id: number, name: string) => {
+    const ok = await swal.confirmDelete(`Delete role "${name}"? Users with this role will lose its permissions.`);
+    if (!ok) return;
     setDeletingId(id);
     try {
       await rolesApi.delete(id);
@@ -119,7 +122,7 @@ export function RolesPage() {
                     <Pencil size={14} className="text-earth-500" />
                   </button>
                   <button
-                    onClick={() => handleDelete(role.id)}
+                    onClick={() => handleDelete(role.id, role.name)}
                     disabled={deletingId === role.id}
                     className="p-1.5 hover:bg-red-50 rounded-lg transition-colors"
                     title="Delete"

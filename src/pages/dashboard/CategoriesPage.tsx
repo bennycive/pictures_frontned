@@ -7,6 +7,7 @@ import { Modal } from '../../components/ui/Modal';
 import { useToast } from '../../components/ui/Toast';
 import { Spinner } from '../../components/ui/Spinner';
 import { useAuth } from '../../context/AuthContext';
+import { swal } from '../../lib/swal';
 
 export function CategoriesPage() {
   const { hasPermission } = useAuth();
@@ -19,7 +20,6 @@ export function CategoriesPage() {
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [saving, setSaving] = useState(false);
-  const [deleteConfirm, setDeleteConfirm] = useState<Category | null>(null);
 
   const canCreate = hasPermission('artworks.add_category');
   const canEdit = hasPermission('artworks.change_category');
@@ -52,7 +52,9 @@ export function CategoriesPage() {
   };
 
   const handleDelete = async (c: Category) => {
-    try { await categoriesApi.delete(c.uuid); success('Category deleted'); setDeleteConfirm(null); load(); }
+    const ok = await swal.confirmDelete(`Delete category "${c.name}"? This will affect all artworks in this category.`);
+    if (!ok) return;
+    try { await categoriesApi.delete(c.uuid); success('Category deleted'); load(); }
     catch { error('Failed to delete category'); }
   };
 
@@ -64,7 +66,7 @@ export function CategoriesPage() {
     { key: 'actions', header: 'Actions', render: (c: Category) => (
       <div className="flex gap-2">
         {canEdit && <button onClick={() => openEdit(c)} className="p-1.5 hover:bg-earth-100 rounded-lg"><Pencil size={15} className="text-earth-600" /></button>}
-        {canDelete && <button onClick={() => setDeleteConfirm(c)} className="p-1.5 hover:bg-red-50 rounded-lg"><Trash2 size={15} className="text-red-500" /></button>}
+        {canDelete && <button onClick={() => handleDelete(c)} className="p-1.5 hover:bg-red-50 rounded-lg"><Trash2 size={15} className="text-red-500" /></button>}
       </div>
     )},
   ];
@@ -103,13 +105,6 @@ export function CategoriesPage() {
             <button type="submit" disabled={saving} className="btn-primary flex-1">{saving ? 'Saving...' : 'Save'}</button>
           </div>
         </form>
-      </Modal>
-      <Modal open={!!deleteConfirm} onClose={() => setDeleteConfirm(null)} title="Delete Category" size="sm">
-        <p className="text-earth-600 mb-6">Delete <strong>{deleteConfirm?.name}</strong>? This will affect all artworks in this category.</p>
-        <div className="flex gap-3">
-          <button onClick={() => setDeleteConfirm(null)} className="btn-secondary flex-1">Cancel</button>
-          <button onClick={() => deleteConfirm && handleDelete(deleteConfirm)} className="btn-danger flex-1">Delete</button>
-        </div>
       </Modal>
     </div>
   );

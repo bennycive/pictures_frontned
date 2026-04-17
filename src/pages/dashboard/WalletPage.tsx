@@ -45,14 +45,19 @@ export function WalletPage() {
   return (
     <div className="space-y-6">
       {/* Balance card */}
-      <div className="bg-gradient-to-r from-primary-700 to-earth-700 text-white rounded-2xl p-8">
-        <div className="flex items-start justify-between">
-          <div>
+      <div className="bg-gradient-to-r from-primary-700 to-earth-700 text-white rounded-2xl p-6 sm:p-8">
+        <div className="flex flex-col sm:flex-row sm:items-start gap-4 sm:justify-between">
+          <div className="min-w-0">
             <p className="text-primary-200 text-sm mb-2">Available Balance</p>
-            <p className="text-4xl font-bold">{wallet?.currency || 'USD'} {wallet?.balance || '0.00'}</p>
+            <div className="flex items-baseline gap-2 flex-wrap">
+              <span className="text-primary-200 text-lg font-medium shrink-0">{wallet?.currency || 'USD'}</span>
+              <span className="text-3xl sm:text-4xl font-bold break-all leading-tight">
+                {Number(wallet?.balance || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              </span>
+            </div>
             <p className="text-primary-200 text-xs mt-2">Updated {wallet ? new Date(wallet.updated_at).toLocaleString() : '—'}</p>
           </div>
-          <button onClick={() => setDepositOpen(true)} className="bg-white/20 hover:bg-white/30 text-white font-semibold px-4 py-2 rounded-xl text-sm flex items-center gap-2 transition-colors">
+          <button onClick={() => setDepositOpen(true)} className="bg-white/20 hover:bg-white/30 text-white font-semibold px-4 py-2 rounded-xl text-sm flex items-center gap-2 transition-colors shrink-0 self-start">
             <Plus size={16} /> Deposit
           </button>
         </div>
@@ -78,11 +83,11 @@ export function WalletPage() {
                     <p className="text-xs text-earth-400">{new Date(tx.created_at).toLocaleString()}</p>
                     {tx.reference && <p className="text-xs text-earth-300 font-mono truncate">{tx.reference}</p>}
                   </div>
-                  <div className="text-right shrink-0">
-                    <p className={`font-bold text-sm ${tx.type === 'deposit' || tx.type === 'refund' ? 'text-green-600' : 'text-red-600'}`}>
-                      {tx.type === 'deduction' ? '−' : '+'}{wallet.currency} {tx.amount}
+                  <div className="text-right shrink-0 max-w-[140px]">
+                    <p className={`font-bold text-sm break-all ${tx.type === 'deposit' || tx.type === 'refund' ? 'text-green-600' : 'text-red-600'}`}>
+                      {tx.type === 'deduction' ? '−' : '+'}{wallet.currency} {Number(tx.amount).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     </p>
-                    <p className="text-xs text-earth-400">Bal: {tx.balance_after}</p>
+                    <p className="text-xs text-earth-400 break-all">Bal: {Number(tx.balance_after).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
                   </div>
                 </div>
               );

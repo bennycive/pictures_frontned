@@ -7,15 +7,26 @@ import type { Auction, Order } from '../../api/types';
 import { StatusBadge } from '../../components/ui/Badge';
 import { Spinner } from '../../components/ui/Spinner';
 
-function StatCard({ icon: Icon, label, value, color, to }: { icon: React.ElementType; label: string; value: string | number; color: string; to: string }) {
+function formatBalance(value: string | number): string {
+  const num = Number(value);
+  if (isNaN(num)) return String(value);
+  if (num >= 1_000_000_000) return (num / 1_000_000_000).toFixed(2) + 'B';
+  if (num >= 1_000_000)     return (num / 1_000_000).toFixed(2) + 'M';
+  if (num >= 1_000)         return (num / 1_000).toFixed(2) + 'K';
+  return num.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+function StatCard({ icon: Icon, label, value, color, to, isBalance }: { icon: React.ElementType; label: string; value: string | number; color: string; to: string; isBalance?: boolean }) {
   return (
-    <Link to={to} className="bg-white rounded-xl border border-earth-100 p-6 flex items-center gap-4 hover:shadow-md transition-shadow">
-      <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${color}`}>
-        <Icon size={22} className="text-white" />
+    <Link to={to} className="bg-white rounded-xl border border-earth-100 p-4 sm:p-6 flex items-center gap-3 hover:shadow-md transition-shadow min-w-0">
+      <div className={`w-10 h-10 sm:w-12 sm:h-12 rounded-xl flex items-center justify-center shrink-0 ${color}`}>
+        <Icon size={20} className="text-white" />
       </div>
-      <div>
-        <p className="text-2xl font-bold text-earth-900">{value}</p>
-        <p className="text-sm text-earth-500">{label}</p>
+      <div className="min-w-0">
+        <p className="text-xl sm:text-2xl font-bold text-earth-900 truncate">
+          {isBalance ? formatBalance(value) : value}
+        </p>
+        <p className="text-xs sm:text-sm text-earth-500 truncate">{label}</p>
       </div>
     </Link>
   );
@@ -72,7 +83,7 @@ export function OverviewPage() {
         )}
         <StatCard icon={Gavel} label="Auctions" value={stats.auctions} color="bg-primary-600" to="/dashboard/auctions" />
         {walletBalance !== null && (
-          <StatCard icon={Wallet} label="Wallet Balance" value={`$${walletBalance}`} color="bg-green-500" to="/dashboard/wallet" />
+          <StatCard icon={Wallet} label="Wallet Balance" value={walletBalance} color="bg-green-500" to="/dashboard/wallet" isBalance />
         )}
       </div>
 
@@ -114,7 +125,7 @@ export function OverviewPage() {
           ) : (
             <div className="space-y-3">
               {recentOrders.map(o => (
-                <Link key={o.uuid} to={`/dashboard/orders/${o.uuid}`} className="flex items-center gap-3 p-3 hover:bg-earth-50 rounded-lg transition-colors">
+                <Link key={o.uuid} to="/dashboard/orders" className="flex items-center gap-3 p-3 hover:bg-earth-50 rounded-lg transition-colors">
                   <div className="w-10 h-10 bg-earth-100 rounded-lg flex items-center justify-center shrink-0">
                     <Package size={18} className="text-earth-400" />
                   </div>

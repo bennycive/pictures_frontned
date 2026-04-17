@@ -41,7 +41,10 @@ export function OrdersPage() {
     setLoading(true);
     try {
       const params: Record<string, unknown> = {};
-      if (tab === 'mine') params.mine = true;
+      if (tab === 'mine' && isPrivileged && user?.uuid) {
+        // Privileged users see all by default; filter to own orders by uuid
+        params.user_uuid = user.uuid;
+      }
       if (tab === 'artist') params.artist = true;
       // tab === 'all' sends no extra params — backend returns all for privileged roles
       const { data } = await ordersApi.list(params);
@@ -51,7 +54,7 @@ export function OrdersPage() {
     } finally {
       setLoading(false);
     }
-  }, [error]);
+  }, [error, isPrivileged, user?.uuid]);
 
   useEffect(() => { load(activeTab); }, [activeTab, load]);
 

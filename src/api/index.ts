@@ -16,6 +16,8 @@ export const authApi = {
   logout: (refresh_token: string) =>
     api.post('/api/logout', { refresh_token }),
   me: () => api.get<User>('/api/me'),
+  updateMe: (data: Partial<{ name: string; email: string | null; phone: string | null }>) =>
+    api.patch<User>('/api/me/update', data),
 };
 
 // Artworks
@@ -129,9 +131,10 @@ export const permissionsApi = {
 
 // Admin — Users
 export const adminUsersApi = {
-  list: () => api.get<AdminUser[]>('/api/admin/users/'),
+  list: (params?: Record<string, unknown>) =>
+    api.get<AdminUser[]>('/api/admin/users/', { params }),
   get: (uuid: string) => api.get<AdminUser>(`/api/admin/users/${uuid}/`),
-  update: (uuid: string, data: Partial<Pick<AdminUser, 'is_staff' | 'is_active'>>) =>
+  update: (uuid: string, data: Partial<Pick<AdminUser, 'name' | 'email' | 'phone' | 'is_staff' | 'is_active'>>) =>
     api.patch<AdminUser>(`/api/admin/users/${uuid}/`, data),
   assignRole: (uuid: string, role_name: string) =>
     api.post<AdminUser>(`/api/admin/users/${uuid}/assign-role/`, { role_name }),

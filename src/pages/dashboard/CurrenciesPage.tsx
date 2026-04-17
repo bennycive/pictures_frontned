@@ -7,6 +7,7 @@ import { Modal } from '../../components/ui/Modal';
 import { useToast } from '../../components/ui/Toast';
 import { Spinner } from '../../components/ui/Spinner';
 import { useAuth } from '../../context/AuthContext';
+import { swal } from '../../lib/swal';
 
 interface CurrencyForm { code: string; symbol: string; exchange_rate: string; }
 
@@ -19,7 +20,6 @@ export function CurrenciesPage() {
   const [editing, setEditing] = useState<Currency | null>(null);
   const [form, setForm] = useState<CurrencyForm>({ code: '', symbol: '', exchange_rate: '' });
   const [saving, setSaving] = useState(false);
-  const [deleteConfirm, setDeleteConfirm] = useState<Currency | null>(null);
 
   const canCreate = hasPermission('currencies.add_currency');
   const canEdit = hasPermission('currencies.change_currency');
@@ -49,7 +49,9 @@ export function CurrenciesPage() {
   };
 
   const handleDelete = async (c: Currency) => {
-    try { await currenciesApi.delete(c.uuid); success('Currency deleted'); setDeleteConfirm(null); load(); }
+    const ok = await swal.confirmDelete(`Delete currency "${c.code} (${c.symbol})"?`);
+    if (!ok) return;
+    try { await currenciesApi.delete(c.uuid); success('Currency deleted'); load(); }
     catch { error('Failed to delete currency'); }
   };
 
@@ -60,7 +62,7 @@ export function CurrenciesPage() {
     { key: 'actions', header: 'Actions', render: (c: Currency) => (
       <div className="flex gap-2">
         {canEdit && <button onClick={() => openEdit(c)} className="p-1.5 hover:bg-earth-100 rounded-lg"><Pencil size={15} className="text-earth-600" /></button>}
-        {canDelete && <button onClick={() => setDeleteConfirm(c)} className="p-1.5 hover:bg-red-50 rounded-lg"><Trash2 size={15} className="text-red-500" /></button>}
+        {canDelete && <button onClick={() => handleDelete(c)} className="p-1.5 hover:bg-red-50 rounded-lg"><Trash2 size={15} className="text-red-500" /></button>}
       </div>
     )},
   ];
@@ -99,13 +101,6 @@ export function CurrenciesPage() {
             <button type="submit" disabled={saving} className="btn-primary flex-1">{saving ? 'Saving...' : 'Save'}</button>
           </div>
         </form>
-      </Modal>
-      <Modal open={!!deleteConfirm} onClose={() => setDeleteConfirm(null)} title="Delete Currency" size="sm">
-        <p className="text-earth-600 mb-6">Delete currency <strong>{deleteConfirm?.code}</strong>?</p>
-        <div className="flex gap-3">
-          <button onClick={() => setDeleteConfirm(null)} className="btn-secondary flex-1">Cancel</button>
-          <button onClick={() => deleteConfirm && handleDelete(deleteConfirm)} className="btn-danger flex-1">Delete</button>
-        </div>
       </Modal>
     </div>
   );

@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { profileApi, siteApi } from '../../api';
+import { Logo } from '../ui/Logo';
 
 interface NavItem {
   label: string;
@@ -31,7 +32,7 @@ const navItems: NavItem[] = [
   { label: 'Users',          icon: Users,           to: '/dashboard/users',         adminOnly: true },
   { label: 'Messages',       icon: Inbox,           to: '/dashboard/messages',      adminOnly: true },
   { label: 'Site Config',    icon: Settings2,       to: '/dashboard/site-config',   adminOnly: true },
-  { label: 'Reports',        icon: BarChart2,       to: '/dashboard/reports',        adminOnly: true },
+  { label: 'Reports',        icon: BarChart2,       to: '/dashboard/reports',       adminOnly: true },
 ];
 
 export function DashboardLayout({ children }: { children: React.ReactNode }) {
@@ -76,8 +77,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
       {/* Logo */}
       <div className="p-6 border-b border-earth-100">
         <Link to="/" className="flex items-center gap-2">
-          <div className="w-8 h-8 bg-primary-600 rounded-lg flex items-center justify-center text-white font-bold text-sm">AS</div>
-          <span className="font-bold text-earth-900">AfriStudio</span>
+          <Logo variant="dark" className="h-8 w-auto" />
         </Link>
       </div>
 

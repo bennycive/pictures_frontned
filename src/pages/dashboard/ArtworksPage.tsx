@@ -7,6 +7,7 @@ import { Badge } from '../../components/ui/Badge';
 import { useToast } from '../../components/ui/Toast';
 import { Spinner } from '../../components/ui/Spinner';
 import { useAuth } from '../../context/AuthContext';
+import { swal } from '../../lib/swal';
 
 interface ArtworkForm { name: string; dimensions: string; base_price: string; category_uuid: string; is_sold: boolean; image?: File | null; }
 
@@ -28,7 +29,6 @@ export function ArtworksPage() {
   const [editing, setEditing] = useState<Artwork | null>(null);
   const [form, setForm] = useState<ArtworkForm>({ name: '', dimensions: '', base_price: '', category_uuid: '', is_sold: false, image: null });
   const [saving, setSaving] = useState(false);
-  const [deleteConfirm, setDeleteConfirm] = useState<Artwork | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -133,7 +133,9 @@ export function ArtworksPage() {
   };
 
   const handleDelete = async (a: Artwork) => {
-    try { await artworksApi.delete(a.uuid); success('Artwork deleted'); setDeleteConfirm(null); load(page, search); }
+    const ok = await swal.confirmDelete(`"${a.name}" will be permanently removed.`);
+    if (!ok) return;
+    try { await artworksApi.delete(a.uuid); success('Artwork deleted'); load(page, search); }
     catch { error('Failed to delete artwork'); }
   };
 
@@ -246,7 +248,7 @@ export function ArtworksPage() {
                           )}
                           {canDelete && (
                             <button
-                              onClick={() => setDeleteConfirm(a)}
+                              onClick={() => handleDelete(a)}
                               className="p-1.5 hover:bg-red-50 rounded-lg transition-colors"
                               title="Delete"
                             >
@@ -448,22 +450,6 @@ export function ArtworksPage() {
         </form>
       </Modal>
 
-      {/* Delete confirmation */}
-      <Modal open={!!deleteConfirm} onClose={() => setDeleteConfirm(null)} title="Delete Artwork" size="sm">
-        <div className="flex items-start gap-3 mb-5">
-          {deleteConfirm?.image_url && (
-            <img src={deleteConfirm.image_url} alt="" className="w-14 h-14 rounded-lg object-cover shrink-0 border border-earth-100" />
-          )}
-          <div>
-            <p className="text-earth-700 font-medium">{deleteConfirm?.name}</p>
-            <p className="text-sm text-earth-400 mt-1">This action cannot be undone. The artwork will be permanently removed.</p>
-          </div>
-        </div>
-        <div className="flex gap-3">
-          <button onClick={() => setDeleteConfirm(null)} className="btn-secondary flex-1">Cancel</button>
-          <button onClick={() => deleteConfirm && handleDelete(deleteConfirm)} className="btn-danger flex-1">Delete</button>
-        </div>
-      </Modal>
     </div>
   );
 }

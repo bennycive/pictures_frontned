@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef } from 'react';
-import { User, Camera, Trash2 } from 'lucide-react';
-import { profileApi } from '../../api';
+import { User, Camera, Trash2, Pencil, Check, X } from 'lucide-react';
+import { profileApi, authApi } from '../../api';
 import type { Profile } from '../../api/types';
 import { useToast } from '../../components/ui/Toast';
 import { Spinner } from '../../components/ui/Spinner';
@@ -16,6 +16,11 @@ export function ProfilePage() {
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
+
+  // Account details edit state
+  const [editingAccount, setEditingAccount] = useState(false);
+  const [accountFields, setAccountFields] = useState({ name: '', email: '', phone: '' });
+  const [savingAccount, setSavingAccount] = useState(false);
 
   const load = async () => {
     setLoading(true);
@@ -58,6 +63,31 @@ export function ProfilePage() {
   const handleRemoveAvatar = async () => {
     try { await profileApi.removeAvatar(); success('Avatar removed'); load(); }
     catch { error('Failed to remove avatar'); }
+  };
+
+  const startEditAccount = () => {
+    setAccountFields({ name: user?.name || '', email: user?.email || '', phone: user?.phone || '' });
+    setEditingAccount(true);
+  };
+
+  const handleSaveAccount = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSavingAccount(true);
+    try {
+      await authApi.updateMe({
+        name: accountFields.name,
+        email: accountFields.email || null,
+        phone: accountFields.phone || null,
+      });
+      await refreshUser();
+      setEditingAccount(false);
+      success('Account details updated');
+    } catch (err: unknown) {
+      const msg = (err as { response?: { data?: { email?: string[]; phone?: string[]; name?: string[] } } })?.response?.data;
+      if (msg?.email) error(msg.email[0]);
+      else if (msg?.phone) error(msg.phone[0]);
+      else error('Failed to update account details');
+    } finally { setSavingAccount(false); }
   };
 
   if (loading) return <div className="flex justify-center py-12"><Spinner /></div>;
@@ -130,22 +160,86 @@ export function ProfilePage() {
         </form>
       </div>
 
-      {/* Account info */}
+      {/* Account details */}
       <div className="bg-white rounded-xl border border-earth-100 p-6">
-        <h3 className="font-semibold text-earth-900 mb-4">Account Details</h3>
-        <div className="grid grid-cols-2 gap-4 text-sm">
-          {[
-            { label: 'Email', value: user?.email || '—' },
-            { label: 'Phone', value: user?.phone || '—' },
-            { label: 'Roles', value: user?.roles?.join(', ') || '—' },
-            { label: 'Verified', value: user?.verified_at ? new Date(user.verified_at).toLocaleDateString() : 'Not verified' },
-          ].map(row => (
-            <div key={row.label}>
-              <p className="text-earth-400">{row.label}</p>
-              <p className="font-medium text-earth-800 mt-0.5">{row.value}</p>
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="font-semibold text-earth-900">Account Details</h3>
+          {!editingAccount ? (
+            <button
+              onClick={startEditAccount}
+              className="flex items-center gap-1.5 text-sm text-primary-600 hover:text-primary-700 font-medium"
+            >
+              <Pencil size={14} /> Edit
+            </button>
+          ) : (
+            <div className="flex items-center gap-2">
+              <button
+                form="account-form"
+                type="submit"
+                disabled={savingAccount}
+                className="flex items-center gap-1 text-xs bg-emerald-500 hover:bg-emerald-600 text-white px-3 py-1.5 rounded-lg font-medium transition-colors disabled:opacity-50"
+              >
+                {savingAccount ? <Spinner size="sm" /> : <Check size={13} />} Save
+              </button>
+              <button
+                onClick={() => setEditingAccount(false)}
+                className="flex items-center gap-1 text-xs text-earth-500 hover:text-earth-700 px-2 py-1.5 rounded-lg transition-colors"
+              >
+                <X size={13} /> Cancel
+              </button>
             </div>
-          ))}
+          )}
         </div>
+
+        {editingAccount ? (
+          <form id="account-form" onSubmit={handleSaveAccount} className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div>
+              <label className="block text-xs text-earth-500 mb-1">Full Name</label>
+              <input
+                className="input w-full"
+                value={accountFields.name}
+                onChange={e => setAccountFields(f => ({ ...f, name: e.target.value }))}
+                placeholder="Your full name"
+                required
+              />
+            </div>
+            <div>
+              <label className="block text-xs text-earth-500 mb-1">Email</label>
+              <input
+                type="email"
+                className="input w-full"
+                value={accountFields.email}
+                onChange={e => setAccountFields(f => ({ ...f, email: e.target.value }))}
+                placeholder="email@example.com"
+              />
+            </div>
+            <div>
+              <label className="block text-xs text-earth-500 mb-1">Phone</label>
+              <input
+                type="tel"
+                className="input w-full"
+                value={accountFields.phone}
+                onChange={e => setAccountFields(f => ({ ...f, phone: e.target.value }))}
+                placeholder="+255 712 345 678"
+              />
+            </div>
+          </form>
+        ) : (
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-sm">
+            {[
+              { label: 'Name',     value: user?.name || '—' },
+              { label: 'Email',    value: user?.email || '—' },
+              { label: 'Phone',    value: user?.phone || '—' },
+              { label: 'Roles',    value: user?.roles?.join(', ') || '—' },
+              { label: 'Verified', value: user?.verified_at ? new Date(user.verified_at).toLocaleDateString() : 'Not verified' },
+            ].map(row => (
+              <div key={row.label}>
+                <p className="text-earth-400 text-xs">{row.label}</p>
+                <p className="font-medium text-earth-800 mt-0.5">{row.value}</p>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );
