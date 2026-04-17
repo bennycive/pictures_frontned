@@ -17,7 +17,7 @@ function StatusDot({ active }: { active: boolean }) {
 interface EditFields { name: string; email: string; phone: string }
 
 export function UsersPage() {
-  const { success, error } = useToast();
+  const { error } = useToast();
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [roles, setRoles] = useState<Role[]>([]);
   const [loading, setLoading] = useState(true);
@@ -72,7 +72,7 @@ export function UsersPage() {
       const res = await adminUsersApi.update(uuid, payload);
       setUsers(prev => prev.map(u => u.uuid === uuid ? res.data : u));
       setEditingUuid(null);
-      success('User details updated');
+      swal.success('User details updated');
     } catch (e: unknown) {
       const msg = (e as { response?: { data?: { email?: string[]; phone?: string[]; name?: string[] } } })
         ?.response?.data;
@@ -90,7 +90,7 @@ export function UsersPage() {
       const res = await adminUsersApi.assignRole(uuid, roleName);
       setUsers(prev => prev.map(u => u.uuid === uuid ? res.data : u));
       setSelectedRole(prev => ({ ...prev, [uuid]: '' }));
-      success(`Role "${roleName}" assigned`);
+      swal.success(`Role "${roleName}" assigned`);
     } catch { error('Failed to assign role'); }
     finally { setAssigningRole(null); }
   };
@@ -102,7 +102,7 @@ export function UsersPage() {
     try {
       const res = await adminUsersApi.removeRole(uuid, roleName);
       setUsers(prev => prev.map(u => u.uuid === uuid ? res.data : u));
-      success(`Role "${roleName}" removed`);
+      swal.success(`Role "${roleName}" removed`);
     } catch { error('Failed to remove role'); }
     finally { setAssigningRole(null); }
   };
@@ -116,7 +116,7 @@ export function UsersPage() {
     try {
       const res = await adminUsersApi.update(uuid, { [field]: value });
       setUsers(prev => prev.map(u => u.uuid === uuid ? res.data : u));
-      success('User updated');
+      swal.success('User updated');
     } catch { error('Failed to update user'); }
     finally { setTogglingUuid(null); }
   };

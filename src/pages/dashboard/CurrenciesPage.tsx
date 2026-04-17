@@ -13,7 +13,7 @@ interface CurrencyForm { code: string; symbol: string; exchange_rate: string; }
 
 export function CurrenciesPage() {
   const { hasPermission } = useAuth();
-  const { success, error } = useToast();
+  const { error } = useToast();
   const [currencies, setCurrencies] = useState<Currency[]>([]);
   const [loading, setLoading] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
@@ -41,8 +41,8 @@ export function CurrenciesPage() {
     e.preventDefault();
     setSaving(true);
     try {
-      if (editing) { await currenciesApi.update(editing.uuid, form); success('Currency updated!'); }
-      else { await currenciesApi.create(form); success('Currency created!'); }
+      if (editing) { await currenciesApi.update(editing.uuid, form); swal.success('Currency updated!'); }
+      else { await currenciesApi.create(form); swal.success('Currency created!'); }
       setModalOpen(false); load();
     } catch { error('Failed to save currency'); }
     finally { setSaving(false); }
@@ -51,7 +51,7 @@ export function CurrenciesPage() {
   const handleDelete = async (c: Currency) => {
     const ok = await swal.confirmDelete(`Delete currency "${c.code} (${c.symbol})"?`);
     if (!ok) return;
-    try { await currenciesApi.delete(c.uuid); success('Currency deleted'); load(); }
+    try { await currenciesApi.delete(c.uuid); swal.success('Currency deleted'); load(); }
     catch { error('Failed to delete currency'); }
   };
 

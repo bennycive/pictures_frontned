@@ -7,7 +7,7 @@ import { useToast } from '../../components/ui/Toast';
 import { swal } from '../../lib/swal';
 
 export function RolesPage() {
-  const { success, error } = useToast();
+  const { error } = useToast();
   const [roles, setRoles] = useState<Role[]>([]);
   const [permissions, setPermissions] = useState<Permission[]>([]);
   const [loading, setLoading] = useState(true);
@@ -58,10 +58,10 @@ export function RolesPage() {
     try {
       if (editing) {
         await rolesApi.update(editing.id, form);
-        success('Role updated');
+        swal.success('Role updated');
       } else {
         await rolesApi.create(form);
-        success('Role created');
+        swal.success('Role created');
       }
       closeModal();
       load();
@@ -75,7 +75,7 @@ export function RolesPage() {
     setDeletingId(id);
     try {
       await rolesApi.delete(id);
-      success('Role deleted');
+      swal.success('Role deleted');
       load();
     } catch { error('Failed to delete role'); }
     finally { setDeletingId(null); }

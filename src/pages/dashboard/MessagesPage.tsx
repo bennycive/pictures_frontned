@@ -8,6 +8,7 @@ import { Spinner } from '../../components/ui/Spinner';
 import { Modal } from '../../components/ui/Modal';
 import { Logo } from '../../components/ui/Logo';
 import { useToast } from '../../components/ui/Toast';
+import { swal } from '../../lib/swal';
 
 const STATUS_COLORS: Record<ContactMessage['status'], 'blue' | 'green' | 'yellow'> = {
   new:    'blue',
@@ -16,7 +17,7 @@ const STATUS_COLORS: Record<ContactMessage['status'], 'blue' | 'green' | 'yellow
 };
 
 export function MessagesPage() {
-  const { success, error } = useToast();
+  const { error } = useToast();
   const [messages, setMessages] = useState<ContactMessage[]>([]);
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState<ContactMessage | null>(null);
@@ -39,7 +40,7 @@ export function MessagesPage() {
       const updated = res.data as ContactMessage;
       setMessages(prev => prev.map(m => m.id === msg.id ? updated : m));
       if (selected?.id === msg.id) setSelected(updated);
-      success('Status updated.');
+      swal.success('Status updated.');
     } catch {
       error('Failed to update status.');
     } finally {

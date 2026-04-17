@@ -7,6 +7,7 @@ import { Table } from '../../components/ui/Table';
 import { Modal } from '../../components/ui/Modal';
 import { StatusBadge } from '../../components/ui/Badge';
 import { useToast } from '../../components/ui/Toast';
+import { swal } from '../../lib/swal';
 import { Spinner } from '../../components/ui/Spinner';
 import { useAuth } from '../../context/AuthContext';
 
@@ -17,7 +18,7 @@ interface AuctionForm {
 
 export function AuctionsPage() {
   const { hasPermission } = useAuth();
-  const { success, error } = useToast();
+  const { error } = useToast();
   const [auctions, setAuctions] = useState<Auction[]>([]);
   const [artworks, setArtworks] = useState<Artwork[]>([]);
   const [loading, setLoading] = useState(true);
@@ -46,7 +47,7 @@ export function AuctionsPage() {
     try {
       const payload = { ...form, reserve_price: form.reserve_price || null };
       await auctionsApi.create(payload as Record<string, unknown>);
-      success('Auction created!');
+      swal.success('Auction created!');
       setModalOpen(false);
       load();
     } catch { error('Failed to create auction'); }
@@ -54,12 +55,12 @@ export function AuctionsPage() {
   };
 
   const handleStart = async (uuid: string) => {
-    try { await auctionsApi.start(uuid); success('Auction started!'); load(); }
+    try { await auctionsApi.start(uuid); swal.success('Auction started!'); load(); }
     catch { error('Failed to start auction'); }
   };
 
   const handleEnd = async (uuid: string) => {
-    try { await auctionsApi.end(uuid); success('Auction ended!'); load(); }
+    try { await auctionsApi.end(uuid); swal.success('Auction ended!'); load(); }
     catch { error('Failed to end auction'); }
   };
 

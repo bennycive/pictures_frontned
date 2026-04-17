@@ -3,12 +3,13 @@ import { User, Camera, Trash2, Pencil, Check, X } from 'lucide-react';
 import { profileApi, authApi } from '../../api';
 import type { Profile } from '../../api/types';
 import { useToast } from '../../components/ui/Toast';
+import { swal } from '../../lib/swal';
 import { Spinner } from '../../components/ui/Spinner';
 import { useAuth } from '../../context/AuthContext';
 
 export function ProfilePage() {
   const { user, refreshUser } = useAuth();
-  const { success, error } = useToast();
+  const { error } = useToast();
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
   const [form, setForm] = useState({ bio: '', address: '', city: '' });
@@ -51,7 +52,7 @@ export function ProfilePage() {
       fd.append('city', form.city);
       if (avatarFile) fd.append('avatar', avatarFile);
       await profileApi.update(fd);
-      success('Profile updated!');
+      swal.success('Profile updated!');
       setAvatarFile(null);
       setAvatarPreview(null);
       load();
@@ -61,7 +62,7 @@ export function ProfilePage() {
   };
 
   const handleRemoveAvatar = async () => {
-    try { await profileApi.removeAvatar(); success('Avatar removed'); load(); }
+    try { await profileApi.removeAvatar(); swal.success('Avatar removed'); load(); }
     catch { error('Failed to remove avatar'); }
   };
 
@@ -81,7 +82,7 @@ export function ProfilePage() {
       });
       await refreshUser();
       setEditingAccount(false);
-      success('Account details updated');
+      swal.success('Account details updated');
     } catch (err: unknown) {
       const msg = (err as { response?: { data?: { email?: string[]; phone?: string[]; name?: string[] } } })?.response?.data;
       if (msg?.email) error(msg.email[0]);

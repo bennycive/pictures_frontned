@@ -1,5 +1,73 @@
 import Swal from 'sweetalert2';
 
+// ── Inject compact modal CSS once ────────────────────────────────────────────
+const STYLE_ID = 'afri-swal-styles';
+if (!document.getElementById(STYLE_ID)) {
+  const s = document.createElement('style');
+  s.id = STYLE_ID;
+  s.textContent = `
+    .afri-swal {
+      width: 447px !important;
+      height: 210px !important;
+      min-height: 210px !important;
+      max-height: 210px !important;
+      padding: 16px 20px 14px !important;
+      overflow: hidden !important;
+      display: flex !important;
+      flex-direction: column !important;
+      justify-content: space-between !important;
+      box-sizing: border-box !important;
+    }
+    .afri-swal .swal2-icon {
+      width: 36px !important;
+      height: 36px !important;
+      min-height: 36px !important;
+      margin: 0 auto 6px !important;
+      border-width: 2px !important;
+    }
+    .afri-swal .swal2-icon .swal2-icon-content img {
+      width: 26px !important;
+      height: 26px !important;
+    }
+    .afri-swal .swal2-title {
+      font-size: 14px !important;
+      font-weight: 700 !important;
+      padding: 0 !important;
+      margin: 0 0 3px !important;
+      line-height: 1.2 !important;
+      color: #1c1917 !important;
+    }
+    .afri-swal .swal2-html-container {
+      font-size: 11.5px !important;
+      margin: 0 0 6px !important;
+      padding: 0 !important;
+      line-height: 1.4 !important;
+      color: #57534e !important;
+    }
+    .afri-swal .swal2-actions {
+      margin: 0 !important;
+      padding: 0 !important;
+      gap: 8px !important;
+      flex-wrap: nowrap !important;
+    }
+    .afri-swal .swal2-confirm,
+    .afri-swal .swal2-cancel {
+      font-size: 12px !important;
+      padding: 5px 18px !important;
+      border-radius: 8px !important;
+      font-weight: 600 !important;
+      margin: 0 !important;
+      line-height: 1.4 !important;
+    }
+    .afri-swal .swal2-timer-progress-bar-container {
+      border-radius: 0 0 10px 10px !important;
+      height: 3px !important;
+    }
+  `;
+  document.head.appendChild(s);
+}
+
+// ── Logo ──────────────────────────────────────────────────────────────────────
 const EMBLEM_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 43 41">
   <polygon fill="#ec6b1f" points="27.44 11.49 41.97 16.66 39.93 31.17 25.66 33.66 20.43 21.06 27.44 11.49"/>
   <polygon fill="#462718" points="21.29 4.38 0 12.2 10.07 31.53 24.98 25.21 21.29 4.38"/>
@@ -15,30 +83,62 @@ const EMBLEM_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 43 41">
   <polygon fill="#f28e1c" points="25.19 36.43 23.65 38.26 25.02 37.78 25.19 36.43"/>
 </svg>`;
 
-const LOGO_URL = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(EMBLEM_SVG);
-const ICON_HTML = `<img src="${LOGO_URL}" style="width:58px;height:58px" />`;
+const LOGO_URL  = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(EMBLEM_SVG);
+const ICON_HTML = `<img src="${LOGO_URL}" style="width:26px;height:26px" />`;
 
-const AfriSwal = Swal.mixin({
-  confirmButtonColor: '#ec6b1f',
+// ── Mixins ────────────────────────────────────────────────────────────────────
+const Base = Swal.mixin({
+  customClass: { popup: 'afri-swal' },
   cancelButtonColor: '#6b7280',
-  customClass: { popup: 'rounded-2xl font-sans' },
+  width: 447,
+  padding: '16px 20px 14px',
 });
 
+const BaseWide = Base.mixin({});   // same size — layout handles two-button spacing
+
+// ── API ───────────────────────────────────────────────────────────────────────
 export const swal = {
-  async confirmDelete(message = 'This action cannot be undone.'): Promise<boolean> {
-    const r = await AfriSwal.fire({
-      title: 'Are you sure?',
+
+  async success(message: string, title = 'Done!') {
+    return Base.fire({
+      title,
       text: message,
       iconHtml: ICON_HTML,
-      icon: 'warning',
-      iconColor: '#ef4444',
-      showCancelButton: true,
-      confirmButtonColor: '#ef4444',
-      confirmButtonText: 'Yes, delete it!',
-      cancelButtonText: 'Cancel',
-      reverseButtons: true,
+      icon: 'success',
+      iconColor: '#22c55e',
+      background: '#f0fdf4',
+      confirmButtonColor: '#22c55e',
+      confirmButtonText: 'OK',
+      showConfirmButton: true,
+      timer: 3000,
+      timerProgressBar: true,
     });
-    return r.isConfirmed;
+  },
+
+  async error(message: string, title = 'Oops!') {
+    return Base.fire({
+      title,
+      text: message,
+      iconHtml: ICON_HTML,
+      icon: 'error',
+      iconColor: '#ef4444',
+      background: '#fef2f2',
+      confirmButtonColor: '#ef4444',
+      confirmButtonText: 'OK',
+    });
+  },
+
+  async warning(opts: { title: string; text: string }) {
+    return Base.fire({
+      title: opts.title,
+      text: opts.text,
+      iconHtml: ICON_HTML,
+      icon: 'warning',
+      iconColor: '#f59e0b',
+      background: '#fffbeb',
+      confirmButtonColor: '#f59e0b',
+      confirmButtonText: 'Got it',
+    });
   },
 
   async confirm(opts: {
@@ -48,14 +148,18 @@ export const swal = {
     cancelText?: string;
     danger?: boolean;
   }): Promise<boolean> {
-    const r = await AfriSwal.fire({
+    const color = opts.danger ? '#ef4444' : '#ec6b1f';
+    const bg    = opts.danger ? '#fef2f2' : '#fff7ed';
+    const r = await BaseWide.fire({
       title: opts.title,
       text: opts.text,
       iconHtml: ICON_HTML,
       icon: 'question',
-      iconColor: opts.danger ? '#ef4444' : '#ec6b1f',
+      iconColor: color,
+      background: bg,
       showCancelButton: true,
-      confirmButtonColor: opts.danger ? '#ef4444' : '#ec6b1f',
+      confirmButtonColor: color,
+      cancelButtonColor: '#6b7280',
       confirmButtonText: opts.confirmText ?? 'Confirm',
       cancelButtonText: opts.cancelText ?? 'Cancel',
       reverseButtons: true,
@@ -63,38 +167,21 @@ export const swal = {
     return r.isConfirmed;
   },
 
-  async success(message: string) {
-    return AfriSwal.fire({
-      title: 'Done!',
+  async confirmDelete(message = 'This action cannot be undone.'): Promise<boolean> {
+    const r = await BaseWide.fire({
+      title: 'Are you sure?',
       text: message,
-      iconHtml: ICON_HTML,
-      icon: 'success',
-      iconColor: '#ec6b1f',
-      timer: 2000,
-      showConfirmButton: false,
-      timerProgressBar: true,
-    });
-  },
-
-  async error(message: string) {
-    return AfriSwal.fire({
-      title: 'Oops!',
-      text: message,
-      iconHtml: ICON_HTML,
-      icon: 'error',
-      iconColor: '#ef4444',
-      confirmButtonText: 'OK',
-    });
-  },
-
-  async warning(opts: { title: string; text: string }) {
-    return AfriSwal.fire({
-      title: opts.title,
-      text: opts.text,
       iconHtml: ICON_HTML,
       icon: 'warning',
-      iconColor: '#d97706',
-      confirmButtonText: 'Got it',
+      iconColor: '#ef4444',
+      background: '#fef2f2',
+      showCancelButton: true,
+      confirmButtonColor: '#ef4444',
+      cancelButtonColor: '#6b7280',
+      confirmButtonText: 'Yes, delete it!',
+      cancelButtonText: 'Cancel',
+      reverseButtons: true,
     });
+    return r.isConfirmed;
   },
 };

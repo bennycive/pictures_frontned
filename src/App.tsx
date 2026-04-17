@@ -3,6 +3,7 @@ import { AuthProvider } from './context/AuthContext';
 import { AuthModalProvider } from './context/AuthModalContext';
 import { ToastProvider } from './components/ui/Toast';
 import { ThemeProvider } from './context/ThemeContext';
+import { LoadingBar } from './components/ui/LoadingBar';
 import { ProtectedRoute, GuestRoute } from './components/layout/ProtectedRoute';
 import { DashboardLayout } from './components/layout/DashboardLayout';
 
@@ -54,6 +55,7 @@ export default function App() {
       <ThemeProvider>
       <AuthProvider>
         <ToastProvider>
+        <LoadingBar />
         <AuthModalProvider>
           <Routes>
             {/* Public — no login required */}

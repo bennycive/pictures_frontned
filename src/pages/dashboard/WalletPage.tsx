@@ -4,10 +4,11 @@ import { walletApi } from '../../api';
 import type { Wallet } from '../../api/types';
 import { Modal } from '../../components/ui/Modal';
 import { useToast } from '../../components/ui/Toast';
+import { swal } from '../../lib/swal';
 import { Spinner } from '../../components/ui/Spinner';
 
 export function WalletPage() {
-  const { success, error } = useToast();
+  const { error } = useToast();
   const [wallet, setWallet] = useState<Wallet | null>(null);
   const [loading, setLoading] = useState(true);
   const [depositOpen, setDepositOpen] = useState(false);
@@ -29,7 +30,7 @@ export function WalletPage() {
     setDepositing(true);
     try {
       await walletApi.deposit(amount, description);
-      success('Funds deposited!');
+      swal.success('Funds deposited!');
       setDepositOpen(false);
       setAmount('');
       load();

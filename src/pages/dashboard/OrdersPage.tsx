@@ -5,6 +5,7 @@ import type { Order } from '../../api/types';
 import { StatusBadge } from '../../components/ui/Badge';
 import { Modal } from '../../components/ui/Modal';
 import { useToast } from '../../components/ui/Toast';
+import { swal } from '../../lib/swal';
 import { Spinner } from '../../components/ui/Spinner';
 import { useAuth } from '../../context/AuthContext';
 
@@ -14,7 +15,7 @@ const STATUS_OPTIONS = ['pending', 'confirmed', 'shipped', 'delivered', 'cancell
 
 export function OrdersPage() {
   const { user, hasPermission, hasRole, isAdmin } = useAuth();
-  const { success, error } = useToast();
+  const { error } = useToast();
 
   const isPrivileged = isAdmin() || hasRole('Moderator');
   const isArtist = hasRole('Artist');
@@ -69,7 +70,7 @@ export function OrdersPage() {
     setUpdating(true);
     try {
       await ordersApi.updateStatus(selected.uuid, newStatus);
-      success('Order status updated');
+      swal.success('Order status updated');
       setStatusModal(false);
       load(activeTab);
     } catch {

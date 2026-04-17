@@ -23,7 +23,7 @@ const PAGE_SIZES = [10, 25, 50];
 
 export function ArtworksPage() {
   const { hasPermission } = useAuth();
-  const { success, error } = useToast();
+  const { error } = useToast();
 
   const [artworks, setArtworks]       = useState<Artwork[]>([]);
   const [categories, setCategories]   = useState<Category[]>([]);
@@ -135,8 +135,8 @@ export function ArtworksPage() {
       fd.append('category_uuid', form.category_uuid);
       fd.append('is_sold', String(form.is_sold));
       if (form.image) fd.append('image', form.image);
-      if (editing) { await artworksApi.update(editing.uuid, fd); success('Artwork updated!'); }
-      else { await artworksApi.create(fd); success('Artwork created!'); }
+      if (editing) { await artworksApi.update(editing.uuid, fd); swal.success('Artwork updated!'); }
+      else { await artworksApi.create(fd); swal.success('Artwork created!'); }
       setModalOpen(false);
       load(page, search, categoryFilter, statusFilter, pageSize);
     } catch { error('Failed to save artwork'); }
@@ -146,7 +146,7 @@ export function ArtworksPage() {
   const handleDelete = async (a: Artwork) => {
     const ok = await swal.confirmDelete(`"${a.name}" will be permanently removed.`);
     if (!ok) return;
-    try { await artworksApi.delete(a.uuid); success('Artwork deleted'); load(page, search, categoryFilter, statusFilter, pageSize); }
+    try { await artworksApi.delete(a.uuid); swal.success('Artwork deleted'); load(page, search, categoryFilter, statusFilter, pageSize); }
     catch { error('Failed to delete artwork'); }
   };
 

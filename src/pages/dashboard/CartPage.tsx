@@ -4,6 +4,7 @@ import { cartApi, ordersApi } from '../../api';
 import type { Cart } from '../../api/types';
 import { Modal } from '../../components/ui/Modal';
 import { useToast } from '../../components/ui/Toast';
+import { swal } from '../../lib/swal';
 import { Spinner } from '../../components/ui/Spinner';
 import { useNavigate } from 'react-router-dom';
 
@@ -13,7 +14,7 @@ interface CheckoutForm {
 }
 
 export function CartPage() {
-  const { success, error } = useToast();
+  const { error } = useToast();
   const navigate = useNavigate();
   const [cart, setCart] = useState<Cart | null>(null);
   const [loading, setLoading] = useState(true);
@@ -32,8 +33,10 @@ export function CartPage() {
 
   useEffect(() => { load(); }, []);
 
-  const handleRemove = async (uuid: string) => {
-    try { await cartApi.removeItem(uuid); success('Item removed'); load(); }
+  const handleRemove = async (uuid: string, name: string) => {
+    const ok = await swal.confirmDelete(`"${name}" will be removed from your cart.`);
+    if (!ok) return;
+    try { await cartApi.removeItem(uuid); swal.success('Item removed'); load(); }
     catch { error('Failed to remove item'); }
   };
 
@@ -42,7 +45,7 @@ export function CartPage() {
     setPlacing(true);
     try {
       await ordersApi.checkout(checkoutForm as unknown as Record<string, unknown>);
-      success('Order placed successfully!');
+      swal.success('Order placed successfully!');
       setCheckoutOpen(false);
       navigate('/dashboard/orders');
     } catch { error('Checkout failed. Please try again.'); }
@@ -79,7 +82,7 @@ export function CartPage() {
                 </div>
                 <div className="text-right shrink-0">
                   <p className="font-bold text-primary-700">{item.currency} {item.price}</p>
-                  <button onClick={() => handleRemove(item.uuid)} className="mt-1 p-1.5 hover:bg-red-50 rounded-lg transition-colors">
+                  <button onClick={() => handleRemove(item.uuid, item.artwork_name)} className="mt-1 p-1.5 hover:bg-red-50 rounded-lg transition-colors">
                     <Trash2 size={14} className="text-red-400" />
                   </button>
                 </div>

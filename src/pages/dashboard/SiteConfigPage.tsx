@@ -3,6 +3,7 @@ import { Upload, Save, Mail, Phone, MapPin, Image, MessageSquare, Inbox, Refresh
 import { siteApi } from '../../api';
 import type { ContactInfo, ContactMessage, HeroContent, LandingHero } from '../../api/types';
 import { useToast } from '../../components/ui/Toast';
+import { swal } from '../../lib/swal';
 import { Spinner } from '../../components/ui/Spinner';
 import { Table } from '../../components/ui/Table';
 import { Badge } from '../../components/ui/Badge';
@@ -11,7 +12,7 @@ type Tab = 'hero' | 'hero-text' | 'contact-info' | 'messages';
 
 // ─── Hero Tab ────────────────────────────────────────────────────────────────
 function HeroTab() {
-  const { success, error } = useToast();
+  const { error } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [hero, setHero] = useState<LandingHero | null>(null);
   const [loading, setLoading] = useState(true);
@@ -44,7 +45,7 @@ function HeroTab() {
       setPreview(null);
       setFile(null);
       if (fileInputRef.current) fileInputRef.current.value = '';
-      success('Hero image updated!');
+      swal.success('Hero image updated!');
     } catch {
       error('Failed to update hero image.');
     } finally {
@@ -117,7 +118,7 @@ function HeroTab() {
 
 // ─── Hero Text Tab ────────────────────────────────────────────────────────────
 function HeroTextTab() {
-  const { success, error } = useToast();
+  const { error } = useToast();
   const [form, setForm] = useState<Omit<HeroContent, 'updated_at'>>({
     tagline: '', title: '', subtitle: '', cta_text: '', cta_link: '',
   });
@@ -142,7 +143,7 @@ function HeroTextTab() {
     setSaving(true);
     try {
       await siteApi.updateHeroContent(form);
-      success('Hero text updated!');
+      swal.success('Hero text updated!');
     } catch {
       error('Failed to update hero text.');
     } finally {
@@ -202,7 +203,7 @@ function HeroTextTab() {
 
 // ─── Contact Info Tab ─────────────────────────────────────────────────────────
 function ContactInfoTab() {
-  const { success, error } = useToast();
+  const { error } = useToast();
   const [form, setForm] = useState<Omit<ContactInfo, 'updated_at'>>({ email: '', phone: '', location: '' });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -219,7 +220,7 @@ function ContactInfoTab() {
     setSaving(true);
     try {
       await siteApi.updateContactInfo(form);
-      success('Contact info updated!');
+      swal.success('Contact info updated!');
     } catch {
       error('Failed to update contact info.');
     } finally {
@@ -279,7 +280,7 @@ const STATUS_COLORS: Record<ContactMessage['status'], string> = {
 };
 
 function MessagesTab() {
-  const { success, error } = useToast();
+  const { error } = useToast();
   const [messages, setMessages] = useState<ContactMessage[]>([]);
   const [loading, setLoading] = useState(true);
   const [expanded, setExpanded] = useState<number | null>(null);
@@ -300,7 +301,7 @@ function MessagesTab() {
     try {
       const res = await siteApi.updateMessageStatus(msg.id, status);
       setMessages(prev => prev.map(m => m.id === msg.id ? res.data : m));
-      success('Status updated.');
+      swal.success('Status updated.');
     } catch {
       error('Failed to update status.');
     } finally {

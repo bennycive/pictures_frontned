@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { loadingBar } from '../lib/loadingBar';
 
 // In development, Vite proxies /api/* to VITE_API_URL (avoids CORS).
 // In production, set VITE_API_URL to your backend base URL.
@@ -37,15 +38,18 @@ export const apiClient = axios.create({
 apiClient.interceptors.request.use((config) => {
   const token = localStorage.getItem('access_token');
   if (token) config.headers.Authorization = `Bearer ${token}`;
+  loadingBar.start();
   return config;
 });
 
 apiClient.interceptors.response.use(
   (res) => {
+    loadingBar.done();
     res.data = rewriteImageUrls(res.data);
     return res;
   },
   async (error) => {
+    loadingBar.done();
     const original = error.config;
     if (error.response?.status === 401 && !original._retry) {
       original._retry = true;

@@ -23,6 +23,7 @@ const AuctionImage = memo(function AuctionImage({ base }: { base: AuctionBase })
 });
 import { Modal } from '../../components/ui/Modal';
 import { useToast } from '../../components/ui/Toast';
+import { swal } from '../../lib/swal';
 import { PageSpinner } from '../../components/ui/Spinner';
 import { useAuth } from '../../context/AuthContext';
 import { useAuctionSocket } from '../../hooks/useAuctionSocket';
@@ -30,7 +31,7 @@ import { useAuctionSocket } from '../../hooks/useAuctionSocket';
 export function AuctionDetailPage() {
   const { uuid } = useParams<{ uuid: string }>();
   const { user, hasPermission } = useAuth();
-  const { success, error } = useToast();
+  const { error } = useToast();
 
   const [base, setBase] = useState<AuctionBase | null>(null);
   const [live, setLive] = useState<AuctionLive | null>(null);
@@ -104,7 +105,7 @@ export function AuctionDetailPage() {
     setBidding(true);
     try {
       await auctionsApi.bid(uuid, bidAmount);
-      success('Bid placed!');
+      swal.success('Bid placed!');
       setBidModalOpen(false);
       // Only refresh live fields — base (image, name) stays untouched
       const { data } = await auctionsApi.get(uuid);
@@ -122,13 +123,13 @@ export function AuctionDetailPage() {
 
   const handleStart = async () => {
     if (!uuid) return;
-    try { await auctionsApi.start(uuid); success('Auction started!'); const { data } = await auctionsApi.get(uuid); setLive(l => l ? { ...l, status: data.status } : l); }
+    try { await auctionsApi.start(uuid); swal.success('Auction started!'); const { data } = await auctionsApi.get(uuid); setLive(l => l ? { ...l, status: data.status } : l); }
     catch { error('Failed to start auction'); }
   };
 
   const handleEnd = async () => {
     if (!uuid) return;
-    try { await auctionsApi.end(uuid); success('Auction ended!'); const { data } = await auctionsApi.get(uuid); setLive(l => l ? { ...l, status: data.status, winner_name: data.winner_name } : l); }
+    try { await auctionsApi.end(uuid); swal.success('Auction ended!'); const { data } = await auctionsApi.get(uuid); setLive(l => l ? { ...l, status: data.status, winner_name: data.winner_name } : l); }
     catch { error('Failed to end auction'); }
   };
 

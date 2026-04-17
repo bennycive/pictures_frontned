@@ -11,7 +11,7 @@ import { swal } from '../../lib/swal';
 
 export function CategoriesPage() {
   const { hasPermission } = useAuth();
-  const { success, error } = useToast();
+  const { error } = useToast();
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -43,8 +43,8 @@ export function CategoriesPage() {
     e.preventDefault();
     setSaving(true);
     try {
-      if (editing) { await categoriesApi.update(editing.uuid, { name, description }); success('Category updated!'); }
-      else { await categoriesApi.create({ name, description }); success('Category created!'); }
+      if (editing) { await categoriesApi.update(editing.uuid, { name, description }); swal.success('Category updated!'); }
+      else { await categoriesApi.create({ name, description }); swal.success('Category created!'); }
       setModalOpen(false);
       load();
     } catch { error('Failed to save category'); }
@@ -54,7 +54,7 @@ export function CategoriesPage() {
   const handleDelete = async (c: Category) => {
     const ok = await swal.confirmDelete(`Delete category "${c.name}"? This will affect all artworks in this category.`);
     if (!ok) return;
-    try { await categoriesApi.delete(c.uuid); success('Category deleted'); load(); }
+    try { await categoriesApi.delete(c.uuid); swal.success('Category deleted'); load(); }
     catch { error('Failed to delete category'); }
   };
 
