@@ -6,7 +6,7 @@ import {
   Shield, Users, Settings2, Inbox, BarChart2
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
-import { profileApi, siteApi } from '../../api';
+import { profileApi, siteApi, cartApi } from '../../api';
 import { Logo } from '../ui/Logo';
 
 interface NavItem {
@@ -42,10 +42,14 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [cartCount, setCartCount] = useState(0);
 
   useEffect(() => {
     profileApi.get()
       .then(res => setAvatarUrl(res.data.avatar_url || null))
+      .catch(() => {});
+    cartApi.get()
+      .then(res => setCartCount(res.data.items?.length ?? 0))
       .catch(() => {});
   }, [user?.uuid]);
 
@@ -130,10 +134,18 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
                   {unreadCount > 99 ? '99+' : unreadCount}
                 </span>
               )}
-              {active && item.to !== '/dashboard/messages' && (
+              {item.to === '/dashboard/cart' && cartCount > 0 && (
+                <span className="ml-auto min-w-[20px] h-5 px-1.5 bg-primary-500 text-white text-[11px] font-bold rounded-full flex items-center justify-center">
+                  {cartCount > 99 ? '99+' : cartCount}
+                </span>
+              )}
+              {active && item.to !== '/dashboard/messages' && item.to !== '/dashboard/cart' && (
                 <ChevronRight size={14} className="ml-auto text-primary-400" />
               )}
               {active && item.to === '/dashboard/messages' && unreadCount === 0 && (
+                <ChevronRight size={14} className="ml-auto text-primary-400" />
+              )}
+              {active && item.to === '/dashboard/cart' && cartCount === 0 && (
                 <ChevronRight size={14} className="ml-auto text-primary-400" />
               )}
             </Link>

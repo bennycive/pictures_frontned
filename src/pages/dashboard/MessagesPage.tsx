@@ -1,13 +1,15 @@
 import { useEffect, useState } from 'react';
-import { RefreshCw } from 'lucide-react';
+import { RefreshCw, X, Mail, Clock } from 'lucide-react';
 import { siteApi } from '../../api';
 import type { ContactMessage } from '../../api/types';
 import { Table } from '../../components/ui/Table';
 import { Badge } from '../../components/ui/Badge';
 import { Spinner } from '../../components/ui/Spinner';
+import { Modal } from '../../components/ui/Modal';
+import { Logo } from '../../components/ui/Logo';
 import { useToast } from '../../components/ui/Toast';
 
-const STATUS_COLORS: Record<ContactMessage['status'], string> = {
+const STATUS_COLORS: Record<ContactMessage['status'], 'blue' | 'green' | 'yellow'> = {
   new:    'blue',
   read:   'green',
   unread: 'yellow',
@@ -17,7 +19,7 @@ export function MessagesPage() {
   const { success, error } = useToast();
   const [messages, setMessages] = useState<ContactMessage[]>([]);
   const [loading, setLoading] = useState(true);
-  const [expanded, setExpanded] = useState<number | null>(null);
+  const [selected, setSelected] = useState<ContactMessage | null>(null);
   const [updating, setUpdating] = useState<number | null>(null);
 
   const load = () => {
@@ -34,13 +36,20 @@ export function MessagesPage() {
     setUpdating(msg.id);
     try {
       const res = await siteApi.updateMessageStatus(msg.id, status);
-      setMessages(prev => prev.map(m => m.id === msg.id ? res.data : m));
+      const updated = res.data as ContactMessage;
+      setMessages(prev => prev.map(m => m.id === msg.id ? updated : m));
+      if (selected?.id === msg.id) setSelected(updated);
       success('Status updated.');
     } catch {
       error('Failed to update status.');
     } finally {
       setUpdating(null);
     }
+  };
+
+  const openMessage = (msg: ContactMessage) => {
+    setSelected(msg);
+    if (msg.status === 'new') handleStatusChange(msg, 'read');
   };
 
   const unread = messages.filter(m => m.status !== 'read').length;
@@ -50,9 +59,7 @@ export function MessagesPage() {
       key: 'status',
       header: 'Status',
       render: (m: ContactMessage) => (
-        <Badge color={STATUS_COLORS[m.status] as 'blue' | 'green' | 'yellow'}>
-          {m.status}
-        </Badge>
+        <Badge label={m.status} color={STATUS_COLORS[m.status]} />
       ),
     },
     {
@@ -87,10 +94,10 @@ export function MessagesPage() {
       render: (m: ContactMessage) => (
         <div className="flex items-center gap-2">
           <button
-            onClick={() => setExpanded(expanded === m.id ? null : m.id)}
-            className="text-xs text-primary-600 hover:underline"
+            onClick={() => openMessage(m)}
+            className="text-xs font-medium text-primary-600 hover:text-primary-700 hover:underline"
           >
-            {expanded === m.id ? 'Hide' : 'Read'}
+            Read
           </button>
           <select
             value={m.status}
@@ -113,7 +120,7 @@ export function MessagesPage() {
         <div>
           <h1 className="text-xl font-bold text-earth-900">Contact Messages</h1>
           <p className="text-sm text-earth-500 mt-0.5">
-            {messages.length} total · {unread} unread
+            {messages.length} messages received.
           </p>
         </div>
         <button onClick={load} className="btn-secondary flex items-center gap-2 text-sm">
@@ -124,39 +131,87 @@ export function MessagesPage() {
       {loading ? (
         <div className="flex justify-center py-16"><Spinner /></div>
       ) : (
-        <>
-          <Table
-            columns={columns}
-            data={messages}
-            keyField="id"
-            emptyMessage="No contact messages yet."
-          />
-
-          {expanded !== null && (() => {
-            const msg = messages.find(m => m.id === expanded);
-            if (!msg) return null;
-            return (
-              <div className="bg-white border border-earth-200 rounded-2xl p-6 shadow-sm space-y-3">
-                <div className="flex items-start justify-between gap-4">
-                  <div>
-                    <p className="font-semibold text-earth-900">{msg.subject}</p>
-                    <p className="text-xs text-earth-500">
-                      From {msg.name} &lt;{msg.email}&gt; · {new Date(msg.created_at).toLocaleString()}
-                    </p>
-                  </div>
-                  <button
-                    onClick={() => setExpanded(null)}
-                    className="text-earth-400 hover:text-earth-700 text-xs shrink-0"
-                  >
-                    Close
-                  </button>
-                </div>
-                <p className="text-sm text-earth-700 leading-relaxed whitespace-pre-wrap">{msg.message}</p>
-              </div>
-            );
-          })()}
-        </>
+        <Table
+          columns={columns}
+          data={messages}
+          keyField="id"
+          emptyMessage="No contact messages yet."
+        />
       )}
+
+      {/* Message detail modal */}
+      <Modal
+        open={!!selected}
+        onClose={() => setSelected(null)}
+        title=""
+        size="md"
+      >
+        {selected && (
+          <div className="space-y-4">
+            {/* Logo header */}
+            <div className="flex items-center justify-center pb-2 border-b border-earth-100">
+              <Logo variant="dark" className="h-7 w-auto" />
+            </div>
+
+            {/* Header info */}
+            <div className="flex items-start justify-between gap-3">
+              <div className="space-y-1 min-w-0">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="font-semibold text-earth-900">{selected.name}</span>
+                  <Badge label={selected.status} color={STATUS_COLORS[selected.status]} />
+                </div>
+                <div className="flex items-center gap-1.5 text-xs text-earth-500">
+                  <Mail size={12} />
+                  <span>{selected.email}</span>
+                </div>
+                <div className="flex items-center gap-1.5 text-xs text-earth-400">
+                  <Clock size={12} />
+                  <span>{new Date(selected.created_at).toLocaleString()}</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Subject */}
+            <div className="bg-earth-50 rounded-xl px-4 py-3">
+              <p className="text-xs text-earth-400 uppercase tracking-wide font-medium mb-0.5">Subject</p>
+              <p className="text-sm font-semibold text-earth-900">{selected.subject}</p>
+            </div>
+
+            {/* Message body */}
+            <div className="bg-white border border-earth-100 rounded-xl px-4 py-4">
+              <p className="text-xs text-earth-400 uppercase tracking-wide font-medium mb-2">Message</p>
+              <p className="text-sm text-earth-700 leading-relaxed whitespace-pre-wrap">{selected.message}</p>
+            </div>
+
+            {/* Status action row */}
+            <div className="flex items-center justify-between pt-1">
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-earth-500">Mark as:</span>
+                {(['new', 'read', 'unread'] as ContactMessage['status'][]).map(s => (
+                  <button
+                    key={s}
+                    disabled={updating === selected.id || selected.status === s}
+                    onClick={() => handleStatusChange(selected, s)}
+                    className={`text-xs px-3 py-1 rounded-full border font-medium transition-colors disabled:opacity-40 ${
+                      selected.status === s
+                        ? 'bg-primary-500 text-white border-primary-500'
+                        : 'border-earth-200 text-earth-600 hover:border-primary-400 hover:text-primary-600'
+                    }`}
+                  >
+                    {s.charAt(0).toUpperCase() + s.slice(1)}
+                  </button>
+                ))}
+              </div>
+              <button
+                onClick={() => setSelected(null)}
+                className="text-xs text-earth-400 hover:text-earth-700 flex items-center gap-1"
+              >
+                <X size={13} /> Close
+              </button>
+            </div>
+          </div>
+        )}
+      </Modal>
     </div>
   );
 }

@@ -5,6 +5,7 @@ import { useAuthModal } from '../../context/AuthModalContext';
 import { useTheme } from '../../context/ThemeContext';
 import { useState, useEffect } from 'react';
 import { Logo } from '../ui/Logo';
+import { cartApi } from '../../api';
 
 interface NavbarProps {
   scrollAware?: boolean;
@@ -18,6 +19,14 @@ export function Navbar({ scrollAware = false }: NavbarProps) {
   const location = useLocation();
   const [menuOpen, setMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
+  const [cartCount, setCartCount] = useState(0);
+
+  useEffect(() => {
+    if (!user) { setCartCount(0); return; }
+    cartApi.get()
+      .then(res => setCartCount(res.data.items?.length ?? 0))
+      .catch(() => {});
+  }, [user?.uuid]);
 
   useEffect(() => {
     if (!scrollAware) return;
@@ -105,13 +114,18 @@ export function Navbar({ scrollAware = false }: NavbarProps) {
               <>
                 <Link
                   to="/dashboard/cart"
-                  className={`p-2 rounded-lg transition-colors hidden md:flex ${
+                  className={`relative p-2 rounded-lg transition-colors hidden md:flex ${
                     isTransparent
                       ? 'text-white/80 hover:text-white hover:bg-white/10'
                       : 'text-earth-600 dark:text-earth-400 hover:bg-earth-100 dark:hover:bg-earth-800'
                   }`}
                 >
                   <ShoppingCart size={20} />
+                  {cartCount > 0 && (
+                    <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] px-1 bg-primary-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center">
+                      {cartCount > 99 ? '99+' : cartCount}
+                    </span>
+                  )}
                 </Link>
                 <Link
                   to="/dashboard"
@@ -140,13 +154,18 @@ export function Navbar({ scrollAware = false }: NavbarProps) {
                 </button>
                 <Link
                   to="/dashboard/cart"
-                  className={`p-2 rounded-lg transition-colors ${
+                  className={`relative p-2 rounded-lg transition-colors ${
                     isTransparent
                       ? 'text-white/80 hover:text-white hover:bg-white/10'
                       : 'text-earth-600 dark:text-earth-400 hover:bg-earth-100 dark:hover:bg-earth-800'
                   }`}
                 >
                   <ShoppingCart size={20} />
+                  {cartCount > 0 && (
+                    <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] px-1 bg-primary-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center">
+                      {cartCount > 99 ? '99+' : cartCount}
+                    </span>
+                  )}
                 </Link>
               </div>
             )}
@@ -184,7 +203,14 @@ export function Navbar({ scrollAware = false }: NavbarProps) {
             {user ? (
               <>
                 <Link to="/dashboard" onClick={() => setMenuOpen(false)} className="text-earth-700 dark:text-earth-300 hover:text-primary-500">Dashboard</Link>
-                <Link to="/dashboard/cart" onClick={() => setMenuOpen(false)} className="text-earth-700 dark:text-earth-300 hover:text-primary-500">Cart</Link>
+                <Link to="/dashboard/cart" onClick={() => setMenuOpen(false)} className="text-earth-700 dark:text-earth-300 hover:text-primary-500 flex items-center gap-2">
+                  Cart
+                  {cartCount > 0 && (
+                    <span className="min-w-[18px] h-[18px] px-1 bg-primary-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center">
+                      {cartCount > 99 ? '99+' : cartCount}
+                    </span>
+                  )}
+                </Link>
                 <button onClick={handleLogout} className="text-left text-red-500 hover:text-red-600">Logout</button>
               </>
             ) : (
