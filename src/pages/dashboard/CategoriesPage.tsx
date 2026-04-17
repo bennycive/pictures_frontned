@@ -5,7 +5,7 @@ import type { Category } from '../../api/types';
 import { Table } from '../../components/ui/Table';
 import { Modal } from '../../components/ui/Modal';
 import { useToast } from '../../components/ui/Toast';
-import { Spinner } from '../../components/ui/Spinner';
+import { Spinner, SectionSpinner } from '../../components/ui/Spinner';
 import { useAuth } from '../../context/AuthContext';
 import { swal } from '../../lib/swal';
 
@@ -87,7 +87,7 @@ export function CategoriesPage() {
           )}
         </div>
       </div>
-      {loading ? <div className="flex justify-center py-12"><Spinner /></div> : (
+      {loading ? <SectionSpinner /> : (
         <Table columns={columns} data={categories} keyField="uuid" emptyMessage="No categories found." />
       )}
       <Modal open={modalOpen} onClose={() => setModalOpen(false)} title={editing ? 'Edit Category' : 'Add Category'} size="sm">

@@ -4,7 +4,7 @@ import { profileApi, authApi } from '../../api';
 import type { Profile } from '../../api/types';
 import { useToast } from '../../components/ui/Toast';
 import { swal } from '../../lib/swal';
-import { Spinner } from '../../components/ui/Spinner';
+import { Spinner, SectionSpinner } from '../../components/ui/Spinner';
 import { useAuth } from '../../context/AuthContext';
 
 export function ProfilePage() {
@@ -91,7 +91,7 @@ export function ProfilePage() {
     } finally { setSavingAccount(false); }
   };
 
-  if (loading) return <div className="flex justify-center py-12"><Spinner /></div>;
+  if (loading) return <SectionSpinner />;
 
   const avatarUrl = avatarPreview || profile?.avatar_url;
 

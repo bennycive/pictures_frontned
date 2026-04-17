@@ -4,7 +4,7 @@ import { siteApi } from '../../api';
 import type { ContactMessage } from '../../api/types';
 import { Table } from '../../components/ui/Table';
 import { Badge } from '../../components/ui/Badge';
-import { Spinner } from '../../components/ui/Spinner';
+import { Spinner, SectionSpinner } from '../../components/ui/Spinner';
 import { Modal } from '../../components/ui/Modal';
 import { Logo } from '../../components/ui/Logo';
 import { useToast } from '../../components/ui/Toast';
@@ -130,7 +130,7 @@ export function MessagesPage() {
       </div>
 
       {loading ? (
-        <div className="flex justify-center py-16"><Spinner /></div>
+        <SectionSpinner />
       ) : (
         <Table
           columns={columns}

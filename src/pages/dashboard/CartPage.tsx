@@ -5,7 +5,7 @@ import type { Cart } from '../../api/types';
 import { Modal } from '../../components/ui/Modal';
 import { useToast } from '../../components/ui/Toast';
 import { swal } from '../../lib/swal';
-import { Spinner } from '../../components/ui/Spinner';
+import { Spinner, SectionSpinner } from '../../components/ui/Spinner';
 import { useNavigate } from 'react-router-dom';
 
 interface CheckoutForm {
@@ -52,7 +52,7 @@ export function CartPage() {
     finally { setPlacing(false); }
   };
 
-  if (loading) return <div className="flex justify-center py-12"><Spinner /></div>;
+  if (loading) return <SectionSpinner />;
 
   const items = cart?.items || [];
 

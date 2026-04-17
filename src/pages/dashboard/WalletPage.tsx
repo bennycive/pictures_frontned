@@ -5,7 +5,7 @@ import type { Wallet } from '../../api/types';
 import { Modal } from '../../components/ui/Modal';
 import { useToast } from '../../components/ui/Toast';
 import { swal } from '../../lib/swal';
-import { Spinner } from '../../components/ui/Spinner';
+import { Spinner, SectionSpinner } from '../../components/ui/Spinner';
 
 export function WalletPage() {
   const { error } = useToast();
@@ -38,7 +38,7 @@ export function WalletPage() {
     finally { setDepositing(false); }
   };
 
-  if (loading) return <div className="flex justify-center py-12"><Spinner /></div>;
+  if (loading) return <SectionSpinner />;
 
   const txIcons = { deposit: ArrowUpCircle, deduction: ArrowDownCircle, refund: RefreshCw };
   const txColors = { deposit: 'text-green-500', deduction: 'text-red-500', refund: 'text-blue-500' };

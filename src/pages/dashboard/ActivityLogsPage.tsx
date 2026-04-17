@@ -3,7 +3,7 @@ import { Search } from 'lucide-react';
 import { activityLogsApi } from '../../api';
 import type { ActivityLog } from '../../api/types';
 import { useToast } from '../../components/ui/Toast';
-import { Spinner } from '../../components/ui/Spinner';
+import { Spinner, SectionSpinner } from '../../components/ui/Spinner';
 import { Badge } from '../../components/ui/Badge';
 
 const EVENT_COLORS: Record<string, 'green' | 'red' | 'blue' | 'yellow' | 'gray'> = {
@@ -61,7 +61,7 @@ export function ActivityLogsPage() {
       </div>
 
       {loading ? (
-        <div className="flex justify-center py-12"><Spinner /></div>
+        <SectionSpinner />
       ) : (
         <div className="bg-white rounded-xl border border-earth-100 overflow-hidden">
           {logs.length === 0 ? (

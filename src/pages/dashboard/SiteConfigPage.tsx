@@ -4,7 +4,7 @@ import { siteApi } from '../../api';
 import type { ContactInfo, ContactMessage, HeroContent, LandingHero } from '../../api/types';
 import { useToast } from '../../components/ui/Toast';
 import { swal } from '../../lib/swal';
-import { Spinner } from '../../components/ui/Spinner';
+import { Spinner, SectionSpinner } from '../../components/ui/Spinner';
 import { Table } from '../../components/ui/Table';
 import { Badge } from '../../components/ui/Badge';
 
@@ -53,7 +53,7 @@ function HeroTab() {
     }
   };
 
-  if (loading) return <div className="flex justify-center py-16"><Spinner /></div>;
+  if (loading) return <SectionSpinner />;
 
   const currentSrc = preview ?? hero?.image_url ?? null;
 
@@ -151,7 +151,7 @@ function HeroTextTab() {
     }
   };
 
-  if (loading) return <div className="flex justify-center py-16"><Spinner /></div>;
+  if (loading) return <SectionSpinner />;
 
   return (
     <div className="max-w-lg space-y-6">
@@ -228,7 +228,7 @@ function ContactInfoTab() {
     }
   };
 
-  if (loading) return <div className="flex justify-center py-16"><Spinner /></div>;
+  if (loading) return <SectionSpinner />;
 
   const fields: { key: keyof typeof form; label: string; icon: React.ElementType; type?: string; placeholder: string }[] = [
     { key: 'email',    label: 'Email Address', icon: Mail,   type: 'email', placeholder: 'hello@afristudio.art' },
@@ -371,7 +371,7 @@ function MessagesTab() {
     },
   ];
 
-  if (loading) return <div className="flex justify-center py-16"><Spinner /></div>;
+  if (loading) return <SectionSpinner />;
 
   return (
     <div className="space-y-4">

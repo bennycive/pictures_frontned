@@ -6,7 +6,7 @@ import { StatusBadge } from '../../components/ui/Badge';
 import { Modal } from '../../components/ui/Modal';
 import { useToast } from '../../components/ui/Toast';
 import { swal } from '../../lib/swal';
-import { Spinner } from '../../components/ui/Spinner';
+import { Spinner, SectionSpinner } from '../../components/ui/Spinner';
 import { useAuth } from '../../context/AuthContext';
 
 type ViewTab = 'mine' | 'all' | 'artist';
@@ -120,7 +120,7 @@ export function OrdersPage() {
 
       {/* Table */}
       {loading ? (
-        <div className="flex justify-center py-16"><Spinner size="lg" /></div>
+        <SectionSpinner size="lg" />
       ) : orders.length === 0 ? (
         <div className="text-center py-16">
           <ShoppingBag size={40} className="mx-auto text-earth-300 mb-3" />

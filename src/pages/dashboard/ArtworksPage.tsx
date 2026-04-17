@@ -10,7 +10,7 @@ import { Modal } from '../../components/ui/Modal';
 import { Badge } from '../../components/ui/Badge';
 import { Logo } from '../../components/ui/Logo';
 import { useToast } from '../../components/ui/Toast';
-import { Spinner } from '../../components/ui/Spinner';
+import { Spinner, SectionSpinner } from '../../components/ui/Spinner';
 import { useAuth } from '../../context/AuthContext';
 import { swal } from '../../lib/swal';
 

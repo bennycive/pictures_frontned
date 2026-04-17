@@ -5,7 +5,7 @@ import { useAuth } from '../../context/AuthContext';
 import { artworksApi, categoriesApi, auctionsApi, ordersApi, walletApi } from '../../api';
 import type { Auction, Order } from '../../api/types';
 import { StatusBadge } from '../../components/ui/Badge';
-import { Spinner } from '../../components/ui/Spinner';
+import { Spinner, SectionSpinner } from '../../components/ui/Spinner';
 
 function formatBalance(value: string | number): string {
   const num = Number(value);
@@ -63,7 +63,7 @@ export function OverviewPage() {
     Promise.allSettled(tasks).finally(() => setLoading(false));
   }, [hasPermission]);
 
-  if (loading) return <div className="flex justify-center py-12"><Spinner size="lg" /></div>;
+  if (loading) return <SectionSpinner size="lg" />;
 
   return (
     <div className="space-y-6">

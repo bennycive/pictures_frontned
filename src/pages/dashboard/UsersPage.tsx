@@ -7,7 +7,7 @@ import {
 import { adminUsersApi, rolesApi } from '../../api';
 import { swal } from '../../lib/swal';
 import type { AdminUser, Role } from '../../api/types';
-import { Spinner } from '../../components/ui/Spinner';
+import { Spinner, SectionSpinner } from '../../components/ui/Spinner';
 import { useToast } from '../../components/ui/Toast';
 
 function StatusDot({ active }: { active: boolean }) {
@@ -140,7 +140,7 @@ export function UsersPage() {
       </div>
 
       {loading ? (
-        <div className="flex justify-center py-16"><Spinner size="lg" /></div>
+        <SectionSpinner size="lg" />
       ) : filtered.length === 0 ? (
         <div className="text-center py-16 text-earth-400">No users found.</div>
       ) : (

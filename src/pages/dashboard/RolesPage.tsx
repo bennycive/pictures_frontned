@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Shield, Plus, Pencil, Trash2, X, Check } from 'lucide-react';
 import { rolesApi, permissionsApi } from '../../api';
 import type { Role, Permission } from '../../api/types';
-import { Spinner } from '../../components/ui/Spinner';
+import { Spinner, SectionSpinner } from '../../components/ui/Spinner';
 import { useToast } from '../../components/ui/Toast';
 import { swal } from '../../lib/swal';
 
@@ -101,7 +101,7 @@ export function RolesPage() {
       </div>
 
       {loading ? (
-        <div className="flex justify-center py-16"><Spinner size="lg" /></div>
+        <SectionSpinner size="lg" />
       ) : roles.length === 0 ? (
         <div className="text-center py-16 text-earth-400">No roles found. Create your first role.</div>
       ) : (
