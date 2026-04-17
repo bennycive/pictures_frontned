@@ -12,7 +12,7 @@ const BASE_URL = import.meta.env.DEV
 // which means images work both on localhost AND from other devices on the
 // network (e.g. http://192.168.x.x:5173).
 const BACKEND_ORIGIN = (import.meta.env.VITE_API_URL || 'http://localhost:8000').replace(/\/$/, '');
-const IMAGE_FIELDS = ['image_url', 'artwork_image', 'avatar_url'];
+const IMAGE_FIELDS = ['image_url', 'artwork_image', 'avatar_url', 'photo_url'];
 
 function rewriteImageUrls(obj: unknown): unknown {
   if (Array.isArray(obj)) return obj.map(rewriteImageUrls);

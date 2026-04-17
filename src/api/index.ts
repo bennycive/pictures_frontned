@@ -1,5 +1,5 @@
 import api from './client';
-import type { Paginated, Artwork, Category, Currency, Auction, Cart, Order, Profile, Wallet, ActivityLog, TokenResponse, User, Role, Permission, AdminUser, HeroContent, LandingHero, ContactInfo, ContactMessage } from './types';
+import type { Paginated, Artwork, Category, Currency, Auction, Cart, Order, Profile, Wallet, ActivityLog, TokenResponse, User, Role, Permission, AdminUser, HeroContent, LandingHero, ContactInfo, ContactMessage, ArtistProfile, Exhibition, AdminWallet } from './types';
 
 // Auth
 export const authApi = {
@@ -27,9 +27,9 @@ export const artworksApi = {
   get: (uuid: string, currency?: string) =>
     api.get<Artwork>(`/api/artworks/${uuid}/`, { params: { currency } }),
   create: (data: FormData) =>
-    api.post<Artwork>('/api/artworks/', data, { headers: { 'Content-Type': 'multipart/form-data' } }),
+    api.post<Artwork>('/api/artworks/', data, { headers: { 'Content-Type': undefined } }),
   update: (uuid: string, data: FormData) =>
-    api.put<Artwork>(`/api/artworks/${uuid}/`, data, { headers: { 'Content-Type': 'multipart/form-data' } }),
+    api.put<Artwork>(`/api/artworks/${uuid}/`, data, { headers: { 'Content-Type': undefined } }),
   patch: (uuid: string, data: Partial<Record<string, unknown>>) =>
     api.patch<Artwork>(`/api/artworks/${uuid}/`, data),
   delete: (uuid: string) =>
@@ -68,9 +68,11 @@ export const currenciesApi = {
 
 // Auctions
 export const auctionsApi = {
-  list: () => api.get<Auction[]>('/api/auctions/'),
+  list: (params?: Record<string, unknown>) => api.get<Auction[]>('/api/auctions/', { params }),
   get: (uuid: string) => api.get<Auction>(`/api/auctions/${uuid}/`),
   create: (data: Record<string, unknown>) => api.post<Auction>('/api/auctions/', data),
+  update: (uuid: string, data: Record<string, unknown>) => api.patch<Auction>(`/api/auctions/${uuid}/`, data),
+  delete: (uuid: string) => api.delete(`/api/auctions/${uuid}/`),
   start: (uuid: string) => api.post(`/api/auctions/${uuid}/start/`),
   end: (uuid: string) => api.post(`/api/auctions/${uuid}/end/`),
   bid: (uuid: string, amount: string) =>
@@ -101,7 +103,7 @@ export const profileApi = {
   get: () => api.get<Profile>('/api/profile/'),
   update: (data: FormData | Record<string, unknown>) =>
     api.post('/api/profile/', data, {
-      headers: data instanceof FormData ? { 'Content-Type': 'multipart/form-data' } : {},
+      headers: data instanceof FormData ? { 'Content-Type': undefined } : {},
     }),
   removeAvatar: () => api.delete('/api/profile/avatar'),
 };
@@ -170,7 +172,7 @@ export const siteApi = {
   // Landing hero image
   getHero: () => api.get<LandingHero>('/api/site/hero/'),
   updateHero: (data: FormData) =>
-    api.put<LandingHero>('/api/site/hero/', data, { headers: { 'Content-Type': 'multipart/form-data' } }),
+    api.put<LandingHero>('/api/site/hero/', data, { headers: { 'Content-Type': undefined } }),
 
   // Contact info
   getContactInfo: () => api.get<ContactInfo>('/api/site/contact-info/'),
@@ -186,4 +188,26 @@ export const siteApi = {
     api.get<Paginated<ContactMessage>>('/api/site/contact/messages/', { params }),
   updateMessageStatus: (id: number, status: 'new' | 'read' | 'unread') =>
     api.patch<ContactMessage>(`/api/site/contact/messages/${id}/status/`, { status }),
+  deleteMessage: (id: number) =>
+    api.delete(`/api/site/contact/messages/${id}/`),
+
+  // Artist profile
+  getArtistProfile: () => api.get<ArtistProfile>('/api/site/artist/'),
+  updateArtistProfile: (data: FormData) =>
+    api.patch<ArtistProfile>('/api/site/artist/', data, { headers: { 'Content-Type': undefined } }),
+
+  // Exhibitions
+  listExhibitions: () => api.get<Exhibition[]>('/api/site/exhibitions/'),
+  createExhibition: (data: Omit<Exhibition, 'id'>) => api.post<Exhibition>('/api/site/exhibitions/', data),
+  updateExhibition: (id: number, data: Omit<Exhibition, 'id'>) =>
+    api.put<Exhibition>(`/api/site/exhibitions/${id}/`, data),
+  deleteExhibition: (id: number) => api.delete(`/api/site/exhibitions/${id}/`),
+};
+
+// Admin wallet management
+export const adminWalletsApi = {
+  list: (search?: string) =>
+    api.get<AdminWallet[]>('/api/admin/wallets/', { params: search ? { search } : {} }),
+  credit: (id: number, amount: string, description: string) =>
+    api.post<AdminWallet>(`/api/admin/wallets/${id}/credit/`, { amount, description }),
 };

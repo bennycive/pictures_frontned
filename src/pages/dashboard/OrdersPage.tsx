@@ -1,17 +1,18 @@
-import { useEffect, useState, useCallback } from 'react';
-import { Eye, ShoppingBag, Users, Palette } from 'lucide-react';
+import { useEffect, useState, useCallback, useMemo } from 'react';
+import { Eye, ShoppingBag, Users, Palette, Search, X } from 'lucide-react';
 import { ordersApi } from '../../api';
 import type { Order } from '../../api/types';
 import { StatusBadge } from '../../components/ui/Badge';
 import { Modal } from '../../components/ui/Modal';
 import { useToast } from '../../components/ui/Toast';
 import { swal } from '../../lib/swal';
-import { Spinner, SectionSpinner } from '../../components/ui/Spinner';
+import { SectionSpinner } from '../../components/ui/Spinner';
 import { useAuth } from '../../context/AuthContext';
 
 type ViewTab = 'mine' | 'all' | 'artist';
+type StatusFilter = 'all' | 'pending' | 'confirmed' | 'shipped' | 'delivered' | 'cancelled';
 
-const STATUS_OPTIONS = ['pending', 'confirmed', 'shipped', 'delivered', 'cancelled'];
+const STATUS_OPTIONS: StatusFilter[] = ['pending', 'confirmed', 'shipped', 'delivered', 'cancelled'];
 
 export function OrdersPage() {
   const { user, hasPermission, hasRole, isAdmin } = useAuth();
@@ -21,33 +22,31 @@ export function OrdersPage() {
   const isArtist = hasRole('Artist');
   const canUpdateStatus = hasPermission('orders.change_order');
 
-  // Determine which tabs are available
   const tabs: { key: ViewTab; label: string; icon: typeof ShoppingBag }[] = [
-    { key: 'mine', label: 'My Orders', icon: ShoppingBag },
-    ...(isPrivileged ? [{ key: 'all' as ViewTab, label: 'All Orders', icon: Users }] : []),
+    { key: 'mine',   label: 'My Orders',      icon: ShoppingBag },
+    ...(isPrivileged ? [{ key: 'all' as ViewTab,    label: 'All Orders',     icon: Users   }] : []),
     ...(isArtist && !isPrivileged ? [{ key: 'artist' as ViewTab, label: 'Artwork Orders', icon: Palette }] : []),
   ];
 
   const defaultTab: ViewTab = isPrivileged ? 'all' : 'mine';
-  const [activeTab, setActiveTab] = useState<ViewTab>(defaultTab);
-
-  const [orders, setOrders] = useState<Order[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [selected, setSelected] = useState<Order | null>(null);
+  const [activeTab, setActiveTab]     = useState<ViewTab>(defaultTab);
+  const [orders, setOrders]           = useState<Order[]>([]);
+  const [loading, setLoading]         = useState(true);
+  const [selected, setSelected]       = useState<Order | null>(null);
   const [statusModal, setStatusModal] = useState(false);
-  const [newStatus, setNewStatus] = useState('');
-  const [updating, setUpdating] = useState(false);
+  const [newStatus, setNewStatus]     = useState('');
+  const [updating, setUpdating]       = useState(false);
+
+  // Filters (client-side on loaded data)
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
+  const [search, setSearch]             = useState('');
 
   const load = useCallback(async (tab: ViewTab) => {
     setLoading(true);
     try {
       const params: Record<string, unknown> = {};
-      if (tab === 'mine' && isPrivileged && user?.uuid) {
-        // Privileged users see all by default; filter to own orders by uuid
-        params.user_uuid = user.uuid;
-      }
+      if (tab === 'mine' && isPrivileged && user?.uuid) params.user_uuid = user.uuid;
       if (tab === 'artist') params.artist = true;
-      // tab === 'all' sends no extra params — backend returns all for privileged roles
       const { data } = await ordersApi.list(params);
       setOrders(data as Order[]);
     } catch {
@@ -62,6 +61,8 @@ export function OrdersPage() {
   const handleTabChange = (tab: ViewTab) => {
     setActiveTab(tab);
     setSelected(null);
+    setStatusFilter('all');
+    setSearch('');
   };
 
   const handleUpdateStatus = async (e: React.FormEvent) => {
@@ -80,22 +81,61 @@ export function OrdersPage() {
     }
   };
 
-  // Whether to show a buyer column (not relevant for "mine" tab)
   const showBuyer = activeTab !== 'mine';
+
+  const statusCounts = useMemo(() => {
+    const counts: Record<StatusFilter, number> = { all: orders.length, pending: 0, confirmed: 0, shipped: 0, delivered: 0, cancelled: 0 };
+    orders.forEach(o => { if (o.status in counts) counts[o.status as StatusFilter]++; });
+    return counts;
+  }, [orders]);
+
+  const visible = useMemo(() => {
+    let list = statusFilter === 'all' ? orders : orders.filter(o => o.status === statusFilter);
+    if (search.trim()) {
+      const q = search.toLowerCase();
+      list = list.filter(o =>
+        o.uuid.includes(q) ||
+        (o.buyer_name  || '').toLowerCase().includes(q) ||
+        (o.buyer_email || '').toLowerCase().includes(q) ||
+        o.delivery_name.toLowerCase().includes(q)
+      );
+    }
+    return list;
+  }, [orders, statusFilter, search]);
 
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div>
-        <h1 className="text-xl font-bold text-earth-900 dark:text-earth-100">Orders</h1>
-        <p className="text-sm text-earth-500 mt-0.5">
-          {activeTab === 'all' && 'All orders across the platform'}
-          {activeTab === 'mine' && 'Orders you have placed'}
-          {activeTab === 'artist' && 'Orders containing your artworks'}
-        </p>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-xl font-bold text-earth-900 dark:text-earth-100">Orders</h1>
+          <p className="text-sm text-earth-500 mt-0.5">
+            {activeTab === 'all'    && 'All orders across the platform'}
+            {activeTab === 'mine'   && 'Orders you have placed'}
+            {activeTab === 'artist' && 'Orders containing your artworks'}
+          </p>
+        </div>
+
+        {/* Search — shown in All/Artist tabs */}
+        {activeTab !== 'mine' && (
+          <div className="relative w-full sm:w-64">
+            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-earth-400" />
+            <input
+              className="input pl-9 pr-8 text-sm"
+              placeholder="Search buyer, order ID…"
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+            />
+            {search && (
+              <button onClick={() => setSearch('')} className="absolute right-2 top-1/2 -translate-y-1/2 text-earth-400 hover:text-earth-600">
+                <X size={14} />
+              </button>
+            )}
+          </div>
+        )}
       </div>
 
-      {/* Tabs — only shown when user has more than one view */}
+      {/* View tabs */}
       {tabs.length > 1 && (
         <div className="flex gap-1 bg-earth-100 dark:bg-earth-800 rounded-xl p-1 w-fit">
           {tabs.map(tab => {
@@ -104,24 +144,43 @@ export function OrdersPage() {
               <button
                 key={tab.key}
                 onClick={() => handleTabChange(tab.key)}
-                className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-150 ${
+                className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
                   activeTab === tab.key
                     ? 'bg-white dark:bg-earth-700 text-earth-900 dark:text-earth-100 shadow-sm'
                     : 'text-earth-500 dark:text-earth-400 hover:text-earth-700 dark:hover:text-earth-200'
                 }`}
               >
-                <Icon size={15} />
-                {tab.label}
+                <Icon size={15} /> {tab.label}
               </button>
             );
           })}
         </div>
       )}
 
+      {/* Status filter pills */}
+      <div className="flex flex-wrap gap-1">
+        {(['all', ...STATUS_OPTIONS] as StatusFilter[]).map(s => (
+          <button
+            key={s}
+            onClick={() => setStatusFilter(s)}
+            className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors border ${
+              statusFilter === s
+                ? 'bg-primary-600 text-white border-primary-600'
+                : 'bg-white text-earth-600 border-earth-200 hover:border-primary-300 hover:text-primary-600'
+            }`}
+          >
+            {s.charAt(0).toUpperCase() + s.slice(1)}
+            <span className={`ml-1.5 ${statusFilter === s ? 'opacity-80' : 'text-earth-400'}`}>
+              ({statusCounts[s]})
+            </span>
+          </button>
+        ))}
+      </div>
+
       {/* Table */}
       {loading ? (
         <SectionSpinner size="lg" />
-      ) : orders.length === 0 ? (
+      ) : visible.length === 0 ? (
         <div className="text-center py-16">
           <ShoppingBag size={40} className="mx-auto text-earth-300 mb-3" />
           <p className="text-earth-500 text-sm">No orders found.</p>
@@ -133,9 +192,7 @@ export function OrdersPage() {
               <thead>
                 <tr className="border-b border-earth-100 dark:border-earth-700 bg-earth-50 dark:bg-earth-900/50">
                   <th className="text-left px-4 py-3 text-xs font-semibold text-earth-500 uppercase tracking-wide">Order ID</th>
-                  {showBuyer && (
-                    <th className="text-left px-4 py-3 text-xs font-semibold text-earth-500 uppercase tracking-wide">Buyer</th>
-                  )}
+                  {showBuyer && <th className="text-left px-4 py-3 text-xs font-semibold text-earth-500 uppercase tracking-wide">Buyer</th>}
                   <th className="text-left px-4 py-3 text-xs font-semibold text-earth-500 uppercase tracking-wide">Status</th>
                   <th className="text-left px-4 py-3 text-xs font-semibold text-earth-500 uppercase tracking-wide">Items</th>
                   <th className="text-left px-4 py-3 text-xs font-semibold text-earth-500 uppercase tracking-wide">Total</th>
@@ -144,49 +201,28 @@ export function OrdersPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-earth-50 dark:divide-earth-700">
-                {orders.map(order => {
+                {visible.map(order => {
                   const isMine = order.buyer_uuid === user?.uuid || !order.buyer_uuid;
                   return (
-                    <tr
-                      key={order.uuid}
-                      className={`hover:bg-earth-50 dark:hover:bg-earth-700/50 transition-colors ${
-                        showBuyer && isMine ? 'bg-primary-50/30 dark:bg-primary-900/10' : ''
-                      }`}
-                    >
+                    <tr key={order.uuid} className={`hover:bg-earth-50 dark:hover:bg-earth-700/50 transition-colors ${showBuyer && isMine ? 'bg-primary-50/30' : ''}`}>
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-2">
-                          <span className="font-mono text-xs text-earth-600 dark:text-earth-400">
-                            #{order.uuid.slice(0, 8)}
-                          </span>
+                          <span className="font-mono text-xs text-earth-600 dark:text-earth-400">#{order.uuid.slice(0, 8)}</span>
                           {showBuyer && isMine && (
-                            <span className="text-xs bg-primary-100 dark:bg-primary-900/40 text-primary-700 dark:text-primary-400 px-1.5 py-0.5 rounded font-medium">
-                              Mine
-                            </span>
+                            <span className="text-xs bg-primary-100 text-primary-700 px-1.5 py-0.5 rounded font-medium">Mine</span>
                           )}
                         </div>
                       </td>
                       {showBuyer && (
                         <td className="px-4 py-3">
-                          <div>
-                            <p className="font-medium text-earth-800 dark:text-earth-200">
-                              {order.buyer_name || order.delivery_name}
-                            </p>
-                            {order.buyer_email && (
-                              <p className="text-xs text-earth-400">{order.buyer_email}</p>
-                            )}
-                          </div>
+                          <p className="font-medium text-earth-800 dark:text-earth-200">{order.buyer_name || order.delivery_name}</p>
+                          {order.buyer_email && <p className="text-xs text-earth-400">{order.buyer_email}</p>}
                         </td>
                       )}
                       <td className="px-4 py-3"><StatusBadge status={order.status} /></td>
                       <td className="px-4 py-3 text-earth-600 dark:text-earth-400">{order.items.length} item{order.items.length !== 1 ? 's' : ''}</td>
-                      <td className="px-4 py-3">
-                        <span className="font-semibold text-earth-900 dark:text-earth-100">
-                          {order.currency || 'USD'} {order.total}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3 text-earth-500 dark:text-earth-400 text-xs">
-                        {new Date(order.created_at).toLocaleDateString()}
-                      </td>
+                      <td className="px-4 py-3 font-semibold text-earth-900 dark:text-earth-100">{order.currency || 'USD'} {order.total}</td>
+                      <td className="px-4 py-3 text-earth-500 text-xs">{new Date(order.created_at).toLocaleDateString()}</td>
                       <td className="px-4 py-3">
                         <div className="flex gap-2">
                           <button
@@ -199,7 +235,7 @@ export function OrdersPage() {
                           {canUpdateStatus && (
                             <button
                               onClick={() => { setSelected(order); setNewStatus(order.status); setStatusModal(true); }}
-                              className="px-2 py-1 text-xs bg-primary-50 dark:bg-primary-900/30 hover:bg-primary-100 dark:hover:bg-primary-900/50 text-primary-700 dark:text-primary-400 rounded-lg transition-colors"
+                              className="px-2 py-1 text-xs bg-primary-50 hover:bg-primary-100 text-primary-700 rounded-lg transition-colors"
                             >
                               Update
                             </button>
@@ -213,56 +249,46 @@ export function OrdersPage() {
             </table>
           </div>
           <div className="px-4 py-3 border-t border-earth-100 dark:border-earth-700 text-xs text-earth-400">
-            {orders.length} order{orders.length !== 1 ? 's' : ''}
+            {visible.length} of {orders.length} order{orders.length !== 1 ? 's' : ''}
           </div>
         </div>
       )}
 
       {/* Order detail modal */}
-      <Modal
-        open={!!selected && !statusModal}
-        onClose={() => setSelected(null)}
-        title={`Order #${selected?.uuid.slice(0, 8)}`}
-        size="lg"
-      >
+      <Modal open={!!selected && !statusModal} onClose={() => setSelected(null)} title={`Order #${selected?.uuid.slice(0, 8)}`} size="lg">
         {selected && (
           <div className="space-y-5">
             <div className="flex items-center justify-between">
               <StatusBadge status={selected.status} />
-              <span className="font-bold text-primary-700 dark:text-primary-400">
-                {selected.currency || 'USD'} {selected.total}
-              </span>
+              <span className="font-bold text-primary-700 dark:text-primary-400">{selected.currency || 'USD'} {selected.total}</span>
             </div>
 
-            {/* Buyer info (shown for privileged views) */}
             {showBuyer && (selected.buyer_name || selected.buyer_email) && (
               <div className="bg-earth-50 dark:bg-earth-700 rounded-lg p-4">
                 <p className="text-xs font-semibold text-earth-500 uppercase tracking-wide mb-2">Buyer</p>
                 <p className="font-medium text-earth-900 dark:text-earth-100">{selected.buyer_name}</p>
-                {selected.buyer_email && (
-                  <p className="text-sm text-earth-500">{selected.buyer_email}</p>
-                )}
+                {selected.buyer_email && <p className="text-sm text-earth-500">{selected.buyer_email}</p>}
               </div>
             )}
 
             <div className="grid grid-cols-2 gap-4 text-sm">
               <div>
-                <p className="text-earth-500 dark:text-earth-400 text-xs mb-0.5">Recipient</p>
+                <p className="text-earth-500 text-xs mb-0.5">Recipient</p>
                 <p className="font-medium text-earth-900 dark:text-earth-100">{selected.delivery_name}</p>
               </div>
               <div>
-                <p className="text-earth-500 dark:text-earth-400 text-xs mb-0.5">Phone</p>
+                <p className="text-earth-500 text-xs mb-0.5">Phone</p>
                 <p className="font-medium text-earth-900 dark:text-earth-100">{selected.delivery_phone}</p>
               </div>
               <div className="col-span-2">
-                <p className="text-earth-500 dark:text-earth-400 text-xs mb-0.5">Delivery Address</p>
+                <p className="text-earth-500 text-xs mb-0.5">Delivery Address</p>
                 <p className="font-medium text-earth-900 dark:text-earth-100">
                   {selected.delivery_address}, {selected.delivery_city}, {selected.delivery_country}
                 </p>
               </div>
               {selected.notes && (
                 <div className="col-span-2">
-                  <p className="text-earth-500 dark:text-earth-400 text-xs mb-0.5">Notes</p>
+                  <p className="text-earth-500 text-xs mb-0.5">Notes</p>
                   <p className="font-medium text-earth-900 dark:text-earth-100">{selected.notes}</p>
                 </div>
               )}
@@ -274,17 +300,13 @@ export function OrdersPage() {
                 {selected.items.map(item => (
                   <div key={item.id} className="flex items-center justify-between bg-earth-50 dark:bg-earth-700 rounded-lg p-3 text-sm">
                     <span className="font-medium text-earth-800 dark:text-earth-200">{item.artwork_name}</span>
-                    <span className="font-semibold text-earth-900 dark:text-earth-100">
-                      {item.currency || 'USD'} {item.price}
-                    </span>
+                    <span className="font-semibold text-earth-900 dark:text-earth-100">{item.currency || 'USD'} {item.price}</span>
                   </div>
                 ))}
               </div>
             </div>
 
-            <p className="text-xs text-earth-400">
-              Ordered {new Date(selected.created_at).toLocaleString()}
-            </p>
+            <p className="text-xs text-earth-400">Ordered {new Date(selected.created_at).toLocaleString()}</p>
 
             {canUpdateStatus && (
               <button

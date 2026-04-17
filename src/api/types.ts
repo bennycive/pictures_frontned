@@ -231,3 +231,32 @@ export interface ContactMessage {
   created_at: string;
   updated_at: string;
 }
+
+export interface ArtistProfile {
+  name: string;
+  location: string;
+  photo_url: string | null;
+  biography: string;
+  story: string;
+  philosophy: string;
+  statement: string;
+  updated_at: string;
+}
+
+export interface Exhibition {
+  id: number;
+  date_label: string;
+  title: string;
+  location: string;
+  order: number;
+}
+
+export interface AdminWallet {
+  id: number;
+  user_uuid: string;
+  user_name: string;
+  user_email: string;
+  balance: string;
+  currency: string;
+  updated_at: string;
+}
