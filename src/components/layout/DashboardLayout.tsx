@@ -3,7 +3,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard, Image, Tag, DollarSign, Gavel, ShoppingBag,
   Package, User, Wallet, ClipboardList, LogOut, Menu, ChevronRight,
-  Shield, Users, Settings2, Inbox
+  Shield, Users, Settings2, Inbox, BarChart2
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { profileApi, siteApi } from '../../api';
@@ -31,6 +31,7 @@ const navItems: NavItem[] = [
   { label: 'Users',          icon: Users,           to: '/dashboard/users',         adminOnly: true },
   { label: 'Messages',       icon: Inbox,           to: '/dashboard/messages',      adminOnly: true },
   { label: 'Site Config',    icon: Settings2,       to: '/dashboard/site-config',   adminOnly: true },
+  { label: 'Reports',        icon: BarChart2,       to: '/dashboard/reports',        adminOnly: true },
 ];
 
 export function DashboardLayout({ children }: { children: React.ReactNode }) {

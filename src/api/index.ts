@@ -139,6 +139,18 @@ export const adminUsersApi = {
     api.post<AdminUser>(`/api/admin/users/${uuid}/remove-role/`, { role_name }),
 };
 
+// Reports (admin-only)
+export const reportsApi = {
+  auctions: (params?: Record<string, string>) =>
+    api.get('/api/reports/auctions/', { params }),
+  soldArtworks: (params?: Record<string, string>) =>
+    api.get('/api/reports/artworks/sold/', { params }),
+  availableArtworks: (params?: Record<string, string>) =>
+    api.get('/api/reports/artworks/available/', { params }),
+  sales: (params?: Record<string, string>) =>
+    api.get('/api/reports/sales/', { params }),
+};
+
 // Activity Logs
 export const activityLogsApi = {
   list: (params?: Record<string, unknown>) =>
