@@ -63,10 +63,10 @@ apiClient.interceptors.response.use(
         } catch {
           localStorage.removeItem('access_token');
           localStorage.removeItem('refresh_token');
-          // On dashboard pages the user must log in again; on public pages
-          // just retry without auth so the page still loads.
           if (window.location.pathname.startsWith('/dashboard')) {
-            window.location.href = '/login';
+            // Session expired on a protected page — go home and open the auth modal
+            window.location.href = '/';
+            window.dispatchEvent(new CustomEvent('auth:session-expired'));
           } else {
             delete original.headers.Authorization;
             return apiClient(original);

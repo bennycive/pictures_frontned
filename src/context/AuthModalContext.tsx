@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useCallback } from 'react';
+import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
 import { AuthModal } from '../components/ui/AuthModal';
 
 interface OpenOptions {
@@ -27,6 +27,12 @@ export function AuthModalProvider({ children }: { children: React.ReactNode }) {
     setOpen(false);
     setOptions({});
   }, []);
+
+  useEffect(() => {
+    const handler = () => openAuthModal({ defaultTab: 'login' });
+    window.addEventListener('auth:session-expired', handler);
+    return () => window.removeEventListener('auth:session-expired', handler);
+  }, [openAuthModal]);
 
   return (
     <AuthModalContext.Provider value={{ openAuthModal, closeAuthModal }}>

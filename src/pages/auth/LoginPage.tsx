@@ -1,15 +1,27 @@
 import { useState } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { Eye, EyeOff } from 'lucide-react';
+import { Eye, EyeOff, Lock } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../components/ui/Toast';
+import { Logo } from '../../components/ui/Logo';
+
+function GoogleIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 48 48" fill="none">
+      <path d="M47.5 24.5c0-1.6-.1-3.2-.4-4.7H24v8.9h13.2c-.6 3-2.3 5.6-4.9 7.3v6h7.9c4.6-4.2 7.3-10.5 7.3-17.5z" fill="#4285F4"/>
+      <path d="M24 48c6.6 0 12.2-2.2 16.2-5.9l-7.9-6c-2.2 1.5-5 2.3-8.3 2.3-6.4 0-11.8-4.3-13.7-10.1H2.1v6.2C6.1 42.6 14.5 48 24 48z" fill="#34A853"/>
+      <path d="M10.3 28.3c-.5-1.5-.8-3-.8-4.8s.3-3.3.8-4.8v-6.2H2.1C.8 15.6 0 19.7 0 24s.8 8.4 2.1 11.5l8.2-7.2z" fill="#FBBC04"/>
+      <path d="M24 9.5c3.6 0 6.8 1.2 9.3 3.6l7-7C36.2 2.2 30.6 0 24 0 14.5 0 6.1 5.4 2.1 13.3l8.2 6.2C12.2 13.8 17.6 9.5 24 9.5z" fill="#EA4335"/>
+    </svg>
+  );
+}
 
 export function LoginPage() {
   const { login } = useAuth();
-  const { success, error } = useToast();
+  const { success, error, info } = useToast();
   const navigate = useNavigate();
   const location = useLocation();
-  const from = (location.state as { from?: Location })?.from?.pathname || '/dashboard';
+  const from = (location.state as { from?: { pathname?: string } })?.from?.pathname || '/dashboard';
 
   const [form, setForm] = useState({ login: '', password: '' });
   const [showPass, setShowPass] = useState(false);
@@ -30,58 +42,79 @@ export function LoginPage() {
     }
   };
 
+  const handleGoogle = () => {
+    info('Google sign-in is coming soon. Please use email or phone to sign in.');
+  };
+
   return (
-    <div className="min-h-screen bg-earth-50 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-primary-50 flex items-center justify-center p-4">
       <div className="w-full max-w-md">
-        <div className="text-center mb-8">
-          <Link to="/" className="inline-flex items-center gap-2 mb-6">
-            <div className="w-10 h-10 bg-primary-600 rounded-xl flex items-center justify-center text-white font-bold">AS</div>
-            <span className="font-display font-bold text-xl text-earth-900">AfriStudio</span>
+        {/* Logo */}
+        <div className="text-center mb-6">
+          <Link to="/" className="inline-flex items-center justify-center">
+            <Logo variant="dark" className="h-9 w-auto" />
           </Link>
-          <h1 className="text-2xl font-bold text-earth-900">Welcome back</h1>
-          <p className="text-earth-500 mt-1">Sign in to your account</p>
         </div>
 
-        <div className="bg-white rounded-2xl shadow-sm border border-earth-100 p-8">
-          <form onSubmit={handleSubmit} className="space-y-5">
-            <div>
-              <label className="block text-sm font-medium text-earth-700 mb-1.5">Email or Phone</label>
-              <input
-                type="text"
-                className="input"
-                placeholder="jane@example.com or +255..."
-                value={form.login}
-                onChange={e => setForm(f => ({ ...f, login: e.target.value }))}
-                required
-              />
+        <div className="bg-white rounded-3xl shadow-sm border border-primary-100 overflow-hidden">
+          {/* Card header */}
+          <div className="bg-primary-50 px-8 pt-8 pb-6 text-center">
+            <div className="w-14 h-14 bg-primary-200 rounded-full flex items-center justify-center mx-auto mb-4">
+              <Lock size={22} className="text-primary-700" />
             </div>
-            <div>
-              <label className="block text-sm font-medium text-earth-700 mb-1.5">Password</label>
-              <div className="relative">
-                <input
-                  type={showPass ? 'text' : 'password'}
-                  className="input pr-10"
-                  placeholder="Your password"
-                  value={form.password}
-                  onChange={e => setForm(f => ({ ...f, password: e.target.value }))}
-                  required
-                />
-                <button
-                  type="button"
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-earth-400 hover:text-earth-600"
-                  onClick={() => setShowPass(!showPass)}
-                >
-                  {showPass ? <EyeOff size={18} /> : <Eye size={18} />}
-                </button>
-              </div>
-            </div>
-            <div className="text-right">
-              <Link to="/forgot-password" className="text-sm text-primary-600 hover:text-primary-700">Forgot password?</Link>
-            </div>
-            <button type="submit" disabled={loading} className="btn-primary w-full py-3">
-              {loading ? 'Signing in...' : 'Sign in'}
+            <h1 className="font-script text-3xl text-earth-900">Welcome Back</h1>
+            <p className="text-earth-500 text-sm mt-1">Sign in to your account</p>
+          </div>
+
+          <div className="px-8 py-6 space-y-4">
+            {/* Google button */}
+            <button
+              type="button"
+              onClick={handleGoogle}
+              className="w-full flex items-center justify-center gap-3 py-2.5 px-4 border border-earth-200 rounded-xl bg-white hover:bg-earth-50 text-earth-700 font-medium text-sm transition-colors"
+            >
+              <GoogleIcon />
+              Continue with Google
             </button>
-          </form>
+
+            <div className="flex items-center gap-3">
+              <div className="flex-1 h-px bg-earth-100" />
+              <span className="text-xs text-earth-400">or</span>
+              <div className="flex-1 h-px bg-earth-100" />
+            </div>
+
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-earth-700 mb-1.5">Email or Phone</label>
+                <input
+                  type="text" className="input"
+                  placeholder="jane@example.com or +255..."
+                  value={form.login} onChange={e => setForm(f => ({ ...f, login: e.target.value }))}
+                  autoFocus required
+                />
+              </div>
+              <div>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="text-sm font-medium text-earth-700">Password</label>
+                  <Link to="/forgot-password" className="text-xs text-primary-600 hover:text-primary-700">Forgot password?</Link>
+                </div>
+                <div className="relative">
+                  <input
+                    type={showPass ? 'text' : 'password'} className="input pr-10"
+                    placeholder="Your password"
+                    value={form.password} onChange={e => setForm(f => ({ ...f, password: e.target.value }))} required
+                  />
+                  <button type="button" onClick={() => setShowPass(s => !s)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-earth-400 hover:text-earth-600">
+                    {showPass ? <EyeOff size={17} /> : <Eye size={17} />}
+                  </button>
+                </div>
+              </div>
+              <button type="submit" disabled={loading} className="btn-primary w-full py-3 mt-2">
+                {loading ? 'Signing in…' : 'Sign In'}
+              </button>
+            </form>
+          </div>
         </div>
 
         <p className="text-center text-sm text-earth-500 mt-6">

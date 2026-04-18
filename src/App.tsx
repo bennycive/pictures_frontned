@@ -4,7 +4,7 @@ import { AuthModalProvider } from './context/AuthModalContext';
 import { ToastProvider } from './components/ui/Toast';
 import { ThemeProvider } from './context/ThemeContext';
 import { LoadingBar } from './components/ui/LoadingBar';
-import { ProtectedRoute, GuestRoute } from './components/layout/ProtectedRoute';
+import { ProtectedRoute } from './components/layout/ProtectedRoute';
 import { DashboardLayout } from './components/layout/DashboardLayout';
 
 // Landing / Public pages
@@ -16,11 +16,8 @@ import { AuctionDetailPublicPage } from './pages/landing/AuctionDetailPublicPage
 import { AboutPage } from './pages/landing/AboutPage';
 import { ContactPage } from './pages/landing/ContactPage';
 
-// Auth pages
-import { LoginPage } from './pages/auth/LoginPage';
-import { RegisterPage } from './pages/auth/RegisterPage';
+// Auth pages (standalone — only pages reachable via emailed links)
 import { VerifyPage } from './pages/auth/VerifyPage';
-import { ForgotPasswordPage } from './pages/auth/ForgotPasswordPage';
 import { ResetPasswordPage } from './pages/auth/ResetPasswordPage';
 
 // Dashboard pages
@@ -67,11 +64,8 @@ export default function App() {
             <Route path="/about" element={<AboutPage />} />
             <Route path="/contact" element={<ContactPage />} />
 
-            {/* Auth */}
-            <Route path="/login" element={<GuestRoute><LoginPage /></GuestRoute>} />
-            <Route path="/register" element={<GuestRoute><RegisterPage /></GuestRoute>} />
+            {/* Auth — only pages reachable via emailed links */}
             <Route path="/verify" element={<VerifyPage />} />
-            <Route path="/forgot-password" element={<GuestRoute><ForgotPasswordPage /></GuestRoute>} />
             <Route path="/reset-password" element={<ResetPasswordPage />} />
 
             {/* Dashboard — login required */}
