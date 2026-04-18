@@ -77,12 +77,36 @@ export interface BlockedIP {
   created_at: string;
 }
 
+export interface BlockedDevice {
+  id: number;
+  device_signature: string;
+  signature_short: string;
+  ip: string | null;
+  user_agent: string;
+  reason: string;
+  is_permanent: boolean;
+  expires_at: string | null;
+  blocked_by: number | null;
+  blocked_by_name: string | null;
+  created_at: string;
+}
+
 export interface RateLimitViolation {
   id: number;
-  ip: string;
+  device_signature: string;
+  signature_short: string;
+  ip: string | null;
+  user_agent: string;
   violation_count: number;
   first_violation: string;
   last_violation: string;
+}
+
+export interface SecurityConfig {
+  rate_limit_requests: number;
+  rate_limit_window: number;
+  auto_block_threshold: number;
+  updated_at: string;
 }
 
 export interface SecurityStats {
@@ -92,12 +116,14 @@ export interface SecurityStats {
     avg_response_time_ms: number;
     error_rate_percent: number;
     blocked_ips: number;
+    blocked_devices: number;
     violations: number;
   };
   requests_by_method: { method: string; count: number }[];
   requests_hourly: { hour: string; count: number }[];
   status_distribution: { status_code: number | null; count: number }[];
   top_paths: { path: string; method: string; count: number; avg_ms: number | null }[];
+  top_ips: { ip: string; count: number; avg_ms: number | null; is_blocked: boolean }[];
   recent_violations: { ip: string; violation_count: number; last_violation: string }[];
   recent_blocked: { ip: string; reason: string; is_permanent: boolean; created_at: string }[];
 }

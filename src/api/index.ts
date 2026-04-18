@@ -1,5 +1,5 @@
 import api from './client';
-import type { Paginated, Artwork, Category, Currency, Auction, Cart, Order, Profile, Wallet, ActivityLog, TokenResponse, User, Role, Permission, AdminUser, HeroContent, LandingHero, ContactInfo, ContactMessage, ArtistProfile, Exhibition, AdminWallet, BlockedIP, SecurityStats } from './types';
+import type { Paginated, Artwork, Category, Currency, Auction, Cart, Order, Profile, Wallet, ActivityLog, TokenResponse, User, Role, Permission, AdminUser, HeroContent, LandingHero, ContactInfo, ContactMessage, ArtistProfile, Exhibition, AdminWallet, BlockedIP, BlockedDevice, SecurityStats, SecurityConfig, RateLimitViolation } from './types';
 
 // Auth
 export const authApi = {
@@ -206,14 +206,22 @@ export const siteApi = {
 
 // Security — blocked IPs, violations, performance stats
 export const securityApi = {
-  stats:          () => api.get<SecurityStats>('/api/security/stats/'),
-  blockedIPs:     (search?: string) =>
+  stats:              () => api.get<SecurityStats>('/api/security/stats/'),
+  blockedIPs:         (search?: string) =>
     api.get<BlockedIP[]>('/api/security/blocked-ips/', { params: search ? { search } : {} }),
-  blockIP:        (data: { ip: string; reason?: string; is_permanent?: boolean }) =>
+  blockIP:            (data: { ip: string; reason?: string; is_permanent?: boolean }) =>
     api.post<BlockedIP>('/api/security/blocked-ips/', data),
-  unblockIP:      (id: number) => api.delete(`/api/security/blocked-ips/${id}/`),
-  violations:     () => api.get('/api/security/violations/'),
-  clearViolation: (id: number) => api.delete(`/api/security/violations/${id}/`),
+  unblockIP:          (id: number) => api.delete(`/api/security/blocked-ips/${id}/`),
+  blockedDevices:     (search?: string) =>
+    api.get<BlockedDevice[]>('/api/security/blocked-devices/', { params: search ? { search } : {} }),
+  unblockDevice:      (id: number) => api.delete(`/api/security/blocked-devices/${id}/`),
+  violations:         (search?: string) =>
+    api.get<RateLimitViolation[]>('/api/security/violations/', { params: search ? { search } : {} }),
+  clearViolation:     (id: number) => api.delete(`/api/security/violations/${id}/`),
+  blockFromViolation: (id: number) => api.post<BlockedIP>(`/api/security/violations/${id}/block/`),
+  getConfig:          () => api.get<SecurityConfig>('/api/security/config/'),
+  updateConfig:       (data: Partial<Omit<SecurityConfig, 'updated_at'>>) =>
+    api.patch<SecurityConfig>('/api/security/config/', data),
 };
 
 // Admin wallet management
