@@ -60,6 +60,7 @@ export interface Auction {
   status: 'pending' | 'live' | 'ended' | 'cancelled';
   winner_name: string;
   total_bids: number;
+  unique_bidders: number;
   top_bids: string;
   seconds_remaining: string;
   created_at: string;

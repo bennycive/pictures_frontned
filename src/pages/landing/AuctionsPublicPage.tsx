@@ -146,17 +146,23 @@ function AuctionCard({ auction, displayCurrency, currencies }: {
         {isLive && <Countdown endTime={auction.end_time} status={auction.status} />}
 
         {/* Price + bids */}
-        <div className="flex items-center justify-between pt-1 border-t border-earth-50">
+        <div className="flex items-center justify-between pt-2 border-t border-earth-100">
           <div>
             <p className="text-[10px] text-earth-400 uppercase tracking-wide font-medium">
-              {auction.current_price ? 'Current Bid' : 'Starting Bid'}
+              {auction.total_bids > 0 ? 'Current Bid' : 'Starting Bid'}
             </p>
-            <p className="font-bold text-primary-700 text-base">{displayPrice}</p>
+            <p className="font-bold text-primary-700 text-lg leading-tight">{displayPrice}</p>
           </div>
-          <div className="flex items-center gap-1 text-earth-500">
-            <TrendingUp size={13} className="text-primary-400" />
-            <span className="text-sm font-semibold">{auction.total_bids}</span>
-            <span className="text-xs text-earth-400">bids</span>
+          <div className="flex flex-col items-end gap-0.5">
+            <div className="flex items-center gap-1">
+              <TrendingUp size={12} className="text-primary-400" />
+              <span className="text-sm font-bold text-earth-800">{auction.total_bids}</span>
+              <span className="text-xs text-earth-400">bid{auction.total_bids !== 1 ? 's' : ''}</span>
+            </div>
+            <div className="flex items-center gap-1">
+              <span className="text-sm font-semibold text-earth-600">{auction.unique_bidders ?? 0}</span>
+              <span className="text-xs text-earth-400">bidder{(auction.unique_bidders ?? 0) !== 1 ? 's' : ''}</span>
+            </div>
           </div>
         </div>
       </div>
@@ -183,10 +189,12 @@ export function AuctionsPublicPage() {
   // Stats for hero
   const liveAuctions  = useMemo(() => auctions.filter(a => a.status === 'live'), [auctions]);
   const highestBid    = useMemo(() => {
-    const prices = liveAuctions.map(a => parseFloat(a.current_price || a.start_price || '0'));
-    return prices.length ? Math.max(...prices) : 0;
+    const prices = liveAuctions
+      .filter(a => a.total_bids > 0 && a.current_price)
+      .map(a => parseFloat(a.current_price));
+    return prices.length ? Math.max(...prices) : null;
   }, [liveAuctions]);
-  const totalBids     = useMemo(() => auctions.reduce((s, a) => s + (a.total_bids || 0), 0), [auctions]);
+  const totalBids     = useMemo(() => liveAuctions.reduce((s, a) => s + (a.total_bids || 0), 0), [liveAuctions]);
 
   // Filter + sort
   const visible = useMemo(() => {
@@ -234,8 +242,8 @@ export function AuctionsPublicPage() {
           <div className="grid grid-cols-3 gap-4 max-w-lg mx-auto">
             {[
               { value: liveAuctions.length, label: 'Active Auctions' },
-              { value: `$${highestBid.toLocaleString()}`, label: 'Highest Bid' },
-              { value: totalBids, label: 'Total Bids' },
+              { value: highestBid !== null ? `$${highestBid.toLocaleString()}` : '—', label: 'Top Live Bid' },
+              { value: totalBids || '—', label: 'Live Bids' },
             ].map(({ value, label }) => (
               <div key={label} className="bg-white/5 border border-white/10 rounded-2xl px-4 py-4 backdrop-blur-sm">
                 <p className="text-2xl sm:text-3xl font-bold text-primary-400">{value}</p>
