@@ -66,6 +66,42 @@ export interface Auction {
   created_at: string;
 }
 
+export interface BlockedIP {
+  id: number;
+  ip: string;
+  reason: string;
+  is_permanent: boolean;
+  expires_at: string | null;
+  blocked_by: number | null;
+  blocked_by_name: string | null;
+  created_at: string;
+}
+
+export interface RateLimitViolation {
+  id: number;
+  ip: string;
+  violation_count: number;
+  first_violation: string;
+  last_violation: string;
+}
+
+export interface SecurityStats {
+  summary: {
+    total_requests_today: number;
+    total_requests_week: number;
+    avg_response_time_ms: number;
+    error_rate_percent: number;
+    blocked_ips: number;
+    violations: number;
+  };
+  requests_by_method: { method: string; count: number }[];
+  requests_hourly: { hour: string; count: number }[];
+  status_distribution: { status_code: number | null; count: number }[];
+  top_paths: { path: string; method: string; count: number; avg_ms: number | null }[];
+  recent_violations: { ip: string; violation_count: number; last_violation: string }[];
+  recent_blocked: { ip: string; reason: string; is_permanent: boolean; created_at: string }[];
+}
+
 export interface Bid {
   uuid: string;
   bidder_name: string;

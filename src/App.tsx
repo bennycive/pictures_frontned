@@ -37,6 +37,7 @@ import { UsersPage } from './pages/dashboard/UsersPage';
 import { SiteConfigPage } from './pages/dashboard/SiteConfigPage';
 import { MessagesPage } from './pages/dashboard/MessagesPage';
 import { ReportsPage } from './pages/dashboard/ReportsPage';
+import { PerformancePage } from './pages/dashboard/PerformancePage';
 
 function DashboardWrapper({ children }: { children: React.ReactNode }) {
   return (
@@ -85,6 +86,7 @@ export default function App() {
             <Route path="/dashboard/messages" element={<DashboardWrapper><MessagesPage /></DashboardWrapper>} />
             <Route path="/dashboard/site-config" element={<DashboardWrapper><SiteConfigPage /></DashboardWrapper>} />
             <Route path="/dashboard/reports" element={<DashboardWrapper><ReportsPage /></DashboardWrapper>} />
+            <Route path="/dashboard/performance" element={<DashboardWrapper><PerformancePage /></DashboardWrapper>} />
 
             {/* Fallback */}
             <Route path="*" element={<Navigate to="/" replace />} />

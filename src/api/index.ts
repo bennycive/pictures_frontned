@@ -1,5 +1,5 @@
 import api from './client';
-import type { Paginated, Artwork, Category, Currency, Auction, Cart, Order, Profile, Wallet, ActivityLog, TokenResponse, User, Role, Permission, AdminUser, HeroContent, LandingHero, ContactInfo, ContactMessage, ArtistProfile, Exhibition, AdminWallet } from './types';
+import type { Paginated, Artwork, Category, Currency, Auction, Cart, Order, Profile, Wallet, ActivityLog, TokenResponse, User, Role, Permission, AdminUser, HeroContent, LandingHero, ContactInfo, ContactMessage, ArtistProfile, Exhibition, AdminWallet, BlockedIP, SecurityStats } from './types';
 
 // Auth
 export const authApi = {
@@ -202,6 +202,18 @@ export const siteApi = {
   updateExhibition: (id: number, data: Omit<Exhibition, 'id'>) =>
     api.put<Exhibition>(`/api/site/exhibitions/${id}/`, data),
   deleteExhibition: (id: number) => api.delete(`/api/site/exhibitions/${id}/`),
+};
+
+// Security — blocked IPs, violations, performance stats
+export const securityApi = {
+  stats:          () => api.get<SecurityStats>('/api/security/stats/'),
+  blockedIPs:     (search?: string) =>
+    api.get<BlockedIP[]>('/api/security/blocked-ips/', { params: search ? { search } : {} }),
+  blockIP:        (data: { ip: string; reason?: string; is_permanent?: boolean }) =>
+    api.post<BlockedIP>('/api/security/blocked-ips/', data),
+  unblockIP:      (id: number) => api.delete(`/api/security/blocked-ips/${id}/`),
+  violations:     () => api.get('/api/security/violations/'),
+  clearViolation: (id: number) => api.delete(`/api/security/violations/${id}/`),
 };
 
 // Admin wallet management
