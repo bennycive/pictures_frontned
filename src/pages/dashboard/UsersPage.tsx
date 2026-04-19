@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import React from 'react';
 import {
   Search, UserCheck, UserX, ShieldPlus, ShieldMinus,
-  ChevronDown, ChevronUp, Pencil, Check, X,
+  ChevronDown, ChevronUp, Pencil, Check, X, BadgeCheck, BadgeX,
 } from 'lucide-react';
 import { adminUsersApi, rolesApi } from '../../api';
 import { swal } from '../../lib/swal';
@@ -26,6 +26,7 @@ export function UsersPage() {
   const [assigningRole, setAssigningRole] = useState<string | null>(null);
   const [selectedRole, setSelectedRole] = useState<Record<string, string>>({});
   const [togglingUuid, setTogglingUuid] = useState<string | null>(null);
+  const [verifyingUuid, setVerifyingUuid] = useState<string | null>(null);
 
   // Edit state
   const [editingUuid, setEditingUuid] = useState<string | null>(null);
@@ -121,6 +122,26 @@ export function UsersPage() {
     finally { setTogglingUuid(null); }
   };
 
+  const handleVerify = async (uuid: string, isVerified: boolean, userName: string) => {
+    if (isVerified) {
+      const ok = await swal.confirm({
+        title: `Revoke verification for ${userName}?`,
+        text: 'The user will be marked as unverified and may need to re-verify their account.',
+        confirmText: 'Revoke',
+      });
+      if (!ok) return;
+    }
+    setVerifyingUuid(uuid);
+    try {
+      const res = isVerified
+        ? await adminUsersApi.unverifyUser(uuid)
+        : await adminUsersApi.verifyUser(uuid);
+      setUsers(prev => prev.map(u => u.uuid === uuid ? res.data : u));
+      swal.success(isVerified ? 'Verification revoked.' : `${userName} verified successfully.`);
+    } catch { error('Failed to update verification status.'); }
+    finally { setVerifyingUuid(null); }
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between flex-wrap gap-3">
@@ -190,13 +211,22 @@ export function UsersPage() {
 
                       {/* Status */}
                       <td className="px-4 py-3 hidden lg:table-cell">
-                        <div className="flex items-center gap-3 text-xs text-earth-600">
+                        <div className="flex items-center gap-2 flex-wrap text-xs text-earth-600">
                           <span className="flex items-center gap-1">
                             <StatusDot active={user.is_active} />
                             {user.is_active ? 'Active' : 'Inactive'}
                           </span>
+                          {user.verified_at ? (
+                            <span className="flex items-center gap-0.5 bg-green-50 text-green-700 px-2 py-0.5 rounded-full text-[10px] font-semibold">
+                              <BadgeCheck size={11} /> Verified
+                            </span>
+                          ) : (
+                            <span className="flex items-center gap-0.5 bg-amber-50 text-amber-600 px-2 py-0.5 rounded-full text-[10px] font-semibold">
+                              <BadgeX size={11} /> Unverified
+                            </span>
+                          )}
                           {user.is_staff && (
-                            <span className="bg-amber-50 text-amber-700 px-2 py-0.5 rounded-full text-[10px] font-semibold">Staff</span>
+                            <span className="bg-violet-50 text-violet-700 px-2 py-0.5 rounded-full text-[10px] font-semibold">Staff</span>
                           )}
                         </div>
                       </td>
@@ -300,11 +330,16 @@ export function UsersPage() {
                                   </div>
                                   <div>
                                     <p className="text-xs text-earth-400 mb-0.5">Verified</p>
-                                    <p className="font-medium text-earth-900">
-                                      {user.verified_at
-                                        ? new Date(user.verified_at).toLocaleDateString()
-                                        : <span className="text-amber-500 text-xs font-semibold">Not verified</span>}
-                                    </p>
+                                    {user.verified_at ? (
+                                      <p className="flex items-center gap-1 text-sm font-medium text-green-700">
+                                        <BadgeCheck size={14} />
+                                        {new Date(user.verified_at).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}
+                                      </p>
+                                    ) : (
+                                      <p className="flex items-center gap-1 text-xs font-semibold text-amber-500">
+                                        <BadgeX size={13} /> Not verified
+                                      </p>
+                                    )}
                                   </div>
                                 </div>
                               )}
@@ -377,6 +412,24 @@ export function UsersPage() {
 
                             {/* ── Account flags ── */}
                             <div className="flex flex-wrap gap-3 pt-3 border-t border-earth-100">
+                              {/* Verify / Unverify */}
+                              <button
+                                onClick={e => { e.stopPropagation(); handleVerify(user.uuid, !!user.verified_at, user.name); }}
+                                disabled={verifyingUuid === user.uuid}
+                                className={`flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full border transition-colors disabled:opacity-50 ${
+                                  user.verified_at
+                                    ? 'border-earth-200 text-earth-500 hover:bg-earth-100'
+                                    : 'border-green-200 text-green-600 hover:bg-green-50'
+                                }`}
+                              >
+                                {verifyingUuid === user.uuid
+                                  ? <Spinner size="sm" />
+                                  : user.verified_at
+                                    ? <><BadgeX size={13} /> Revoke Verification</>
+                                    : <><BadgeCheck size={13} /> Verify Account</>}
+                              </button>
+
+                              {/* Activate / Deactivate */}
                               <button
                                 onClick={e => { e.stopPropagation(); handleToggle(user.uuid, 'is_active', !user.is_active, user.name); }}
                                 disabled={togglingUuid === user.uuid + 'is_active'}
@@ -389,12 +442,13 @@ export function UsersPage() {
                                 {togglingUuid === user.uuid + 'is_active' ? <Spinner size="sm" /> : user.is_active ? <><UserX size={13} /> Deactivate</> : <><UserCheck size={13} /> Activate</>}
                               </button>
 
+                              {/* Staff toggle */}
                               <button
                                 onClick={e => { e.stopPropagation(); handleToggle(user.uuid, 'is_staff', !user.is_staff, user.name); }}
                                 disabled={togglingUuid === user.uuid + 'is_staff'}
                                 className={`flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full border transition-colors disabled:opacity-50 ${
                                   user.is_staff
-                                    ? 'border-amber-200 text-amber-600 hover:bg-amber-50'
+                                    ? 'border-violet-200 text-violet-600 hover:bg-violet-50'
                                     : 'border-earth-200 text-earth-600 hover:bg-earth-100'
                                 }`}
                               >

@@ -314,6 +314,17 @@ export interface Exhibition {
   order: number;
 }
 
+export interface ErrorRequestLog {
+  id: number;
+  ip: string;
+  method: string;
+  path: string;
+  status_code: number | null;
+  response_time_ms: number | null;
+  user_agent: string;
+  created_at: string;
+}
+
 export interface AdminWallet {
   id: number;
   user_uuid: string;

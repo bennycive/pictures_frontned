@@ -1,5 +1,5 @@
 import api from './client';
-import type { Paginated, Artwork, Category, Currency, Auction, Cart, Order, Profile, Wallet, ActivityLog, TokenResponse, User, Role, Permission, AdminUser, HeroContent, LandingHero, ContactInfo, ContactMessage, ArtistProfile, Exhibition, AdminWallet, BlockedIP, BlockedDevice, SecurityStats, SecurityConfig, RateLimitViolation } from './types';
+import type { Paginated, Artwork, Category, Currency, Auction, Cart, Order, Profile, Wallet, ActivityLog, TokenResponse, User, Role, Permission, AdminUser, HeroContent, LandingHero, ContactInfo, ContactMessage, ArtistProfile, Exhibition, AdminWallet, BlockedIP, BlockedDevice, SecurityStats, SecurityConfig, RateLimitViolation, ErrorRequestLog } from './types';
 
 // Auth
 export const authApi = {
@@ -142,6 +142,10 @@ export const adminUsersApi = {
     api.post<AdminUser>(`/api/admin/users/${uuid}/assign-role/`, { role_name }),
   removeRole: (uuid: string, role_name: string) =>
     api.post<AdminUser>(`/api/admin/users/${uuid}/remove-role/`, { role_name }),
+  verifyUser: (uuid: string) =>
+    api.post<AdminUser>(`/api/admin/users/${uuid}/verify/`),
+  unverifyUser: (uuid: string) =>
+    api.delete<AdminUser>(`/api/admin/users/${uuid}/verify/`),
 };
 
 // Reports (admin-only)
@@ -215,13 +219,18 @@ export const securityApi = {
   blockedDevices:     (search?: string) =>
     api.get<BlockedDevice[]>('/api/security/blocked-devices/', { params: search ? { search } : {} }),
   unblockDevice:      (id: number) => api.delete(`/api/security/blocked-devices/${id}/`),
-  violations:         (search?: string) =>
+  violations:              (search?: string) =>
     api.get<RateLimitViolation[]>('/api/security/violations/', { params: search ? { search } : {} }),
-  clearViolation:     (id: number) => api.delete(`/api/security/violations/${id}/`),
-  blockFromViolation: (id: number) => api.post<BlockedIP>(`/api/security/violations/${id}/block/`),
+  clearViolation:          (id: number) => api.delete(`/api/security/violations/${id}/`),
+  bulkDeleteViolations:    (ids: number[]) => api.delete('/api/security/violations/bulk-delete/', { data: { ids } }),
+  blockFromViolation:      (id: number) => api.post<BlockedDevice>(`/api/security/violations/${id}/block/`),
+  bulkDeleteBlockedIPs:    (ids: number[]) => api.delete('/api/security/blocked-ips/bulk-delete/', { data: { ids } }),
+  bulkDeleteBlockedDevices:(ids: number[]) => api.delete('/api/security/blocked-devices/bulk-delete/', { data: { ids } }),
   getConfig:          () => api.get<SecurityConfig>('/api/security/config/'),
   updateConfig:       (data: Partial<Omit<SecurityConfig, 'updated_at'>>) =>
     api.patch<SecurityConfig>('/api/security/config/', data),
+  errorRequests: (params?: { days?: number; min_status?: number; search?: string; limit?: number }) =>
+    api.get<ErrorRequestLog[]>('/api/security/errors/', { params }),
 };
 
 // Admin wallet management

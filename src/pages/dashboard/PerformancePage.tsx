@@ -8,7 +8,7 @@ import {
   RefreshCw, Trash2, Plus, X, Settings, Save, ChevronDown, ChevronUp, Laptop,
 } from 'lucide-react';
 import { securityApi } from '../../api';
-import type { SecurityStats, BlockedIP, BlockedDevice, RateLimitViolation, SecurityConfig } from '../../api/types';
+import type { SecurityStats, BlockedIP, BlockedDevice, RateLimitViolation, SecurityConfig, ErrorRequestLog } from '../../api/types';
 import { useToast } from '../../components/ui/Toast';
 import { SectionSpinner } from '../../components/ui/Spinner';
 
@@ -247,39 +247,58 @@ function ConfigPanel({ onUpdated }: { onUpdated: () => void }) {
 
 function ViolationsTable({ onBlock }: { onBlock: (ip: string) => void }) {
   const { success, error } = useToast();
-  const [violations, setViolations]   = useState<RateLimitViolation[]>([]);
-  const [loading, setLoading]         = useState(true);
-  const [search, setSearch]           = useState('');
-  const [blockingId, setBlockingId]   = useState<number | null>(null);
+  const [violations, setViolations] = useState<RateLimitViolation[]>([]);
+  const [loading, setLoading]       = useState(true);
+  const [search, setSearch]         = useState('');
+  const [selected, setSelected]     = useState<Set<number>>(new Set());
+  const [deleting, setDeleting]     = useState(false);
+  const [blockingId, setBlockingId] = useState<number | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
       const r = await securityApi.violations(search || undefined);
       setViolations(r.data);
+      setSelected(new Set());
     } catch { error('Failed to load violations.'); }
     finally { setLoading(false); }
   }, [search]);
 
   useEffect(() => { load(); }, [load]);
 
+  const allSelected = violations.length > 0 && selected.size === violations.length;
+  const toggleAll   = () => setSelected(allSelected ? new Set() : new Set(violations.map(v => v.id)));
+  const toggle      = (id: number) => setSelected(s => { const n = new Set(s); n.has(id) ? n.delete(id) : n.add(id); return n; });
+
   const clear = async (id: number) => {
     try {
       await securityApi.clearViolation(id);
       setViolations(v => v.filter(x => x.id !== id));
+      setSelected(s => { const n = new Set(s); n.delete(id); return n; });
       success('Violation cleared.');
     } catch { error('Failed to clear.'); }
+  };
+
+  const bulkDelete = async () => {
+    if (!selected.size) return;
+    setDeleting(true);
+    try {
+      await securityApi.bulkDeleteViolations([...selected]);
+      success(`${selected.size} violation${selected.size > 1 ? 's' : ''} deleted.`);
+      load();
+    } catch { error('Bulk delete failed.'); }
+    finally { setDeleting(false); }
   };
 
   const blockFromViolation = async (v: RateLimitViolation) => {
     setBlockingId(v.id);
     try {
       await securityApi.blockFromViolation(v.id);
-      success(`IP ${v.ip} blocked.`);
-      onBlock(v.ip);
+      success(`Device ${v.signature_short} blocked.`);
+      onBlock(v.ip || '');
     } catch (err: unknown) {
       const msg = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail;
-      error(msg || 'Failed to block IP.');
+      error(msg || 'Failed to block device.');
     } finally { setBlockingId(null); }
   };
 
@@ -289,17 +308,21 @@ function ViolationsTable({ onBlock }: { onBlock: (ip: string) => void }) {
         <div className="flex items-center gap-2 flex-1">
           <AlertTriangle size={15} className="text-amber-500" />
           <h2 className="text-sm font-semibold text-earth-800">Rate-Limit Violations</h2>
-          <span className="bg-amber-100 text-amber-700 text-xs font-bold px-2 py-0.5 rounded-full">
-            {violations.length}
-          </span>
+          <span className="bg-amber-100 text-amber-700 text-xs font-bold px-2 py-0.5 rounded-full">{violations.length}</span>
         </div>
-        <div className="relative w-full sm:w-48">
-          <input
-            className="input w-full pl-3 pr-3 py-1.5 text-sm"
-            placeholder="Filter by IP…"
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-          />
+        <div className="flex items-center gap-2">
+          {selected.size > 0 && (
+            <button
+              onClick={bulkDelete}
+              disabled={deleting}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-red-600 text-white hover:bg-red-700 disabled:opacity-50 transition-colors"
+            >
+              <Trash2 size={12} />
+              {deleting ? 'Deleting…' : `Delete ${selected.size}`}
+            </button>
+          )}
+          <input className="input w-44 text-sm" placeholder="Filter by IP…" value={search}
+            onChange={e => setSearch(e.target.value)} />
         </div>
       </div>
 
@@ -310,50 +333,47 @@ function ViolationsTable({ onBlock }: { onBlock: (ip: string) => void }) {
           <table className="w-full text-sm">
             <thead className="sticky top-0 z-10">
               <tr className="bg-earth-50/80 border-b border-earth-100">
-                <th className="px-4 py-2.5 text-left text-xs font-semibold text-earth-500 uppercase tracking-wide">IP Address</th>
-                <th className="px-4 py-2.5 text-center text-xs font-semibold text-earth-500 uppercase tracking-wide">Violations</th>
-                <th className="px-4 py-2.5 text-left text-xs font-semibold text-earth-500 uppercase tracking-wide hidden md:table-cell">First</th>
-                <th className="px-4 py-2.5 text-left text-xs font-semibold text-earth-500 uppercase tracking-wide">Last</th>
-                <th className="px-4 py-2.5 text-right text-xs font-semibold text-earth-500 uppercase tracking-wide">Actions</th>
+                <th className="pl-4 pr-2 py-2.5 w-8">
+                  <input type="checkbox" checked={allSelected} onChange={toggleAll}
+                    className="rounded border-earth-300 text-primary-600 focus:ring-primary-500 cursor-pointer" />
+                </th>
+                <th className="px-3 py-2.5 text-left text-xs font-semibold text-earth-500 uppercase tracking-wide">IP / Device</th>
+                <th className="px-3 py-2.5 text-center text-xs font-semibold text-earth-500 uppercase tracking-wide">Count</th>
+                <th className="px-3 py-2.5 text-left text-xs font-semibold text-earth-500 uppercase tracking-wide hidden md:table-cell">User Agent</th>
+                <th className="px-3 py-2.5 text-left text-xs font-semibold text-earth-500 uppercase tracking-wide">Last Seen</th>
+                <th className="px-3 py-2.5 text-right text-xs font-semibold text-earth-500 uppercase tracking-wide">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-earth-50">
               {violations.length === 0 ? (
-                <tr><td colSpan={5} className="px-4 py-10 text-center text-earth-400">No violations recorded.</td></tr>
+                <tr><td colSpan={6} className="px-4 py-10 text-center text-earth-400">No violations recorded.</td></tr>
               ) : violations.map(v => (
-                <tr key={v.id} className="hover:bg-earth-50/40">
-                  <td className="px-4 py-3 font-mono text-sm font-bold text-earth-900">{v.ip}</td>
-                  <td className="px-4 py-3 text-center">
-                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold ${
+                <tr key={v.id} className={`hover:bg-earth-50/40 ${selected.has(v.id) ? 'bg-amber-50/40' : ''}`}>
+                  <td className="pl-4 pr-2 py-3">
+                    <input type="checkbox" checked={selected.has(v.id)} onChange={() => toggle(v.id)}
+                      className="rounded border-earth-300 text-primary-600 focus:ring-primary-500 cursor-pointer" />
+                  </td>
+                  <td className="px-3 py-3">
+                    <div className="font-mono text-xs font-bold text-earth-900">{v.ip || '—'}</div>
+                    <div className="text-[10px] text-earth-400 mt-0.5">sig: {v.signature_short}</div>
+                  </td>
+                  <td className="px-3 py-3 text-center">
+                    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold ${
                       v.violation_count >= 10 ? 'bg-red-100 text-red-700' :
-                      v.violation_count >= 5  ? 'bg-amber-100 text-amber-700' :
-                                                'bg-yellow-50 text-yellow-700'
-                    }`}>
-                      {v.violation_count}×
-                    </span>
+                      v.violation_count >= 5  ? 'bg-amber-100 text-amber-700' : 'bg-yellow-50 text-yellow-700'
+                    }`}>{v.violation_count}×</span>
                   </td>
-                  <td className="px-4 py-3 text-xs text-earth-400 hidden md:table-cell">
-                    {new Date(v.first_violation).toLocaleString()}
-                  </td>
-                  <td className="px-4 py-3 text-xs text-earth-500">
-                    {new Date(v.last_violation).toLocaleString()}
-                  </td>
-                  <td className="px-4 py-3 text-right">
+                  <td className="px-3 py-3 text-xs text-earth-400 max-w-[160px] truncate hidden md:table-cell">{v.user_agent || '—'}</td>
+                  <td className="px-3 py-3 text-xs text-earth-500">{new Date(v.last_violation).toLocaleString()}</td>
+                  <td className="px-3 py-3 text-right">
                     <div className="flex items-center justify-end gap-1">
-                      <button
-                        onClick={() => blockFromViolation(v)}
-                        disabled={blockingId === v.id}
-                        className="flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-md bg-red-50 text-red-600 hover:bg-red-100 transition-colors disabled:opacity-50"
-                        title="Block this device only (other devices on the same IP stay unaffected)"
-                      >
-                        <Ban size={11} />
-                        {blockingId === v.id ? '…' : 'Block'}
+                      <button onClick={() => blockFromViolation(v)} disabled={blockingId === v.id}
+                        className="flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-md bg-red-50 text-red-600 hover:bg-red-100 disabled:opacity-50 transition-colors"
+                        title="Block this device only">
+                        <Ban size={11} />{blockingId === v.id ? '…' : 'Block'}
                       </button>
-                      <button
-                        onClick={() => clear(v.id)}
-                        className="p-1.5 rounded-md hover:bg-earth-100 text-earth-400 hover:text-earth-700 transition-colors"
-                        title="Clear violation"
-                      >
+                      <button onClick={() => clear(v.id)}
+                        className="p-1.5 rounded-md hover:bg-earth-100 text-earth-400 hover:text-earth-700 transition-colors">
                         <Trash2 size={13} />
                       </button>
                     </div>
@@ -370,70 +390,142 @@ function ViolationsTable({ onBlock }: { onBlock: (ip: string) => void }) {
 
 // ── Blocked IPs Table ─────────────────────────────────────────────────────────
 
-function BlockedIPsTable({ blocked, onUnblock, onAddClick }: {
-  blocked: BlockedIP[]; onUnblock: (id: number, ip: string) => void; onAddClick: () => void;
+function BlockedIPsTable({ refreshTrigger, onAddClick, onStatsRefresh }: {
+  refreshTrigger: number; onAddClick: () => void; onStatsRefresh: () => void;
 }) {
+  const { success, error } = useToast();
+  const [blocked, setBlocked]   = useState<BlockedIP[]>([]);
+  const [loading, setLoading]   = useState(true);
+  const [search, setSearch]     = useState('');
+  const [selected, setSelected] = useState<Set<number>>(new Set());
+  const [deleting, setDeleting] = useState(false);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const r = await securityApi.blockedIPs(search || undefined);
+      setBlocked(r.data as BlockedIP[]);
+      setSelected(new Set());
+    } catch { error('Failed to load blocked IPs.'); }
+    finally { setLoading(false); }
+  }, [search]);
+
+  useEffect(() => { load(); }, [load, refreshTrigger]);
+
+  const allSelected = blocked.length > 0 && selected.size === blocked.length;
+  const toggleAll   = () => setSelected(allSelected ? new Set() : new Set(blocked.map(b => b.id)));
+  const toggle      = (id: number) => setSelected(s => { const n = new Set(s); n.has(id) ? n.delete(id) : n.add(id); return n; });
+
+  const unblock = async (id: number, ip: string) => {
+    try {
+      await securityApi.unblockIP(id);
+      success(`Unblocked ${ip}`);
+      setBlocked(prev => prev.filter(b => b.id !== id));
+      setSelected(s => { const n = new Set(s); n.delete(id); return n; });
+      onStatsRefresh();
+    } catch { error('Failed to unblock IP.'); }
+  };
+
+  const bulkDelete = async () => {
+    if (!selected.size) return;
+    setDeleting(true);
+    try {
+      await securityApi.bulkDeleteBlockedIPs([...selected]);
+      success(`${selected.size} IP${selected.size > 1 ? 's' : ''} unblocked.`);
+      load();
+      onStatsRefresh();
+    } catch { error('Bulk delete failed.'); }
+    finally { setDeleting(false); }
+  };
+
   return (
     <div className="bg-white rounded-xl border border-earth-100 shadow-sm overflow-hidden">
-      <div className="px-5 py-4 border-b border-earth-100 flex items-center justify-between">
-        <div className="flex items-center gap-2">
+      <div className="px-5 py-4 border-b border-earth-100 flex flex-col sm:flex-row sm:items-center gap-3">
+        <div className="flex items-center gap-2 flex-1">
           <Ban size={15} className="text-red-500" />
           <h2 className="text-sm font-semibold text-earth-800">Blocked IPs</h2>
           {blocked.length > 0 && (
             <span className="bg-red-100 text-red-700 text-xs font-bold px-2 py-0.5 rounded-full">{blocked.length}</span>
           )}
         </div>
-        <button
-          onClick={onAddClick}
-          className="text-xs flex items-center gap-1 text-red-600 hover:text-red-800 font-medium transition-colors"
-        >
-          <Plus size={12} /> Add
-        </button>
+        <div className="flex items-center gap-2">
+          {selected.size > 0 && (
+            <button
+              onClick={bulkDelete}
+              disabled={deleting}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-red-600 text-white hover:bg-red-700 disabled:opacity-50 transition-colors"
+            >
+              <Trash2 size={12} />
+              {deleting ? 'Deleting…' : `Unblock ${selected.size}`}
+            </button>
+          )}
+          <input className="input w-44 text-sm" placeholder="Filter by IP…" value={search}
+            onChange={e => setSearch(e.target.value)} />
+          <button
+            onClick={onAddClick}
+            className="text-xs flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-red-50 text-red-600 hover:bg-red-100 font-medium transition-colors shrink-0"
+          >
+            <Plus size={12} /> Add
+          </button>
+        </div>
       </div>
-      <div className="overflow-x-auto max-h-72 overflow-y-auto">
-        <table className="w-full text-sm">
-          <thead className="sticky top-0 z-10">
-            <tr className="bg-earth-50/80 border-b border-earth-100">
-              <th className="px-4 py-2.5 text-left text-xs font-semibold text-earth-500 uppercase tracking-wide">IP Address</th>
-              <th className="px-4 py-2.5 text-left text-xs font-semibold text-earth-500 uppercase tracking-wide hidden sm:table-cell">Reason</th>
-              <th className="px-4 py-2.5 text-center text-xs font-semibold text-earth-500 uppercase tracking-wide">Type</th>
-              <th className="px-4 py-2.5 text-left text-xs font-semibold text-earth-500 uppercase tracking-wide hidden md:table-cell">Blocked At</th>
-              <th className="px-4 py-2.5 text-right text-xs font-semibold text-earth-500 uppercase tracking-wide">Action</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-earth-50">
-            {blocked.length === 0 ? (
-              <tr><td colSpan={5} className="px-4 py-10 text-center text-earth-400">No blocked IPs.</td></tr>
-            ) : blocked.map(b => (
-              <tr key={b.id} className="hover:bg-earth-50/40">
-                <td className="px-4 py-3 font-mono text-sm font-bold text-earth-900">{b.ip}</td>
-                <td className="px-4 py-3 text-xs text-earth-500 max-w-[180px] truncate hidden sm:table-cell">
-                  {b.reason || <span className="italic text-earth-300">No reason</span>}
-                </td>
-                <td className="px-4 py-3 text-center">
-                  <span className={`text-xs px-2 py-0.5 rounded-full font-semibold ${
-                    b.is_permanent ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-700'
-                  }`}>
-                    {b.is_permanent ? 'Permanent' : 'Temporary'}
-                  </span>
-                </td>
-                <td className="px-4 py-3 text-xs text-earth-400 hidden md:table-cell">
-                  {new Date(b.created_at).toLocaleString()}
-                </td>
-                <td className="px-4 py-3 text-right">
-                  <button
-                    onClick={() => onUnblock(b.id, b.ip)}
-                    className="flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-md bg-earth-50 text-earth-600 hover:bg-earth-100 transition-colors ml-auto"
-                    title="Unblock"
-                  >
-                    <Trash2 size={11} /> Unblock
-                  </button>
-                </td>
+
+      {loading ? (
+        <div className="py-8 flex justify-center"><div className="w-5 h-5 border-2 border-red-400 border-t-transparent rounded-full animate-spin" /></div>
+      ) : (
+        <div className="overflow-x-auto max-h-72 overflow-y-auto">
+          <table className="w-full text-sm">
+            <thead className="sticky top-0 z-10">
+              <tr className="bg-earth-50/80 border-b border-earth-100">
+                <th className="pl-4 pr-2 py-2.5 w-8">
+                  <input type="checkbox" checked={allSelected} onChange={toggleAll}
+                    className="rounded border-earth-300 text-primary-600 focus:ring-primary-500 cursor-pointer" />
+                </th>
+                <th className="px-4 py-2.5 text-left text-xs font-semibold text-earth-500 uppercase tracking-wide">IP Address</th>
+                <th className="px-4 py-2.5 text-left text-xs font-semibold text-earth-500 uppercase tracking-wide hidden sm:table-cell">Reason</th>
+                <th className="px-4 py-2.5 text-center text-xs font-semibold text-earth-500 uppercase tracking-wide">Type</th>
+                <th className="px-4 py-2.5 text-left text-xs font-semibold text-earth-500 uppercase tracking-wide hidden md:table-cell">Blocked At</th>
+                <th className="px-4 py-2.5 text-right text-xs font-semibold text-earth-500 uppercase tracking-wide">Action</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+            </thead>
+            <tbody className="divide-y divide-earth-50">
+              {blocked.length === 0 ? (
+                <tr><td colSpan={6} className="px-4 py-10 text-center text-earth-400">No blocked IPs.</td></tr>
+              ) : blocked.map(b => (
+                <tr key={b.id} className={`hover:bg-earth-50/40 ${selected.has(b.id) ? 'bg-red-50/40' : ''}`}>
+                  <td className="pl-4 pr-2 py-3">
+                    <input type="checkbox" checked={selected.has(b.id)} onChange={() => toggle(b.id)}
+                      className="rounded border-earth-300 text-primary-600 focus:ring-primary-500 cursor-pointer" />
+                  </td>
+                  <td className="px-4 py-3 font-mono text-sm font-bold text-earth-900">{b.ip}</td>
+                  <td className="px-4 py-3 text-xs text-earth-500 max-w-[180px] truncate hidden sm:table-cell">
+                    {b.reason || <span className="italic text-earth-300">No reason</span>}
+                  </td>
+                  <td className="px-4 py-3 text-center">
+                    <span className={`text-xs px-2 py-0.5 rounded-full font-semibold ${
+                      b.is_permanent ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-700'
+                    }`}>
+                      {b.is_permanent ? 'Permanent' : 'Temporary'}
+                    </span>
+                  </td>
+                  <td className="px-4 py-3 text-xs text-earth-400 hidden md:table-cell">
+                    {new Date(b.created_at).toLocaleString()}
+                  </td>
+                  <td className="px-4 py-3 text-right">
+                    <button
+                      onClick={() => unblock(b.id, b.ip)}
+                      className="flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-md bg-earth-50 text-earth-600 hover:bg-earth-100 transition-colors ml-auto"
+                      title="Unblock"
+                    >
+                      <Trash2 size={11} /> Unblock
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
     </div>
   );
 }
@@ -442,28 +534,48 @@ function BlockedIPsTable({ blocked, onUnblock, onAddClick }: {
 
 function BlockedDevicesTable({ onRefresh }: { onRefresh: () => void }) {
   const { success, error } = useToast();
-  const [devices, setDevices] = useState<BlockedDevice[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [search, setSearch]   = useState('');
+  const [devices, setDevices]   = useState<BlockedDevice[]>([]);
+  const [loading, setLoading]   = useState(true);
+  const [search, setSearch]     = useState('');
+  const [selected, setSelected] = useState<Set<number>>(new Set());
+  const [deleting, setDeleting] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
       const r = await securityApi.blockedDevices(search || undefined);
       setDevices(r.data);
+      setSelected(new Set());
     } catch { error('Failed to load blocked devices.'); }
     finally { setLoading(false); }
   }, [search]);
 
   useEffect(() => { load(); }, [load]);
 
-  const unblock = async (id: number, sig: string) => {
+  const allSelected = devices.length > 0 && selected.size === devices.length;
+  const toggleAll   = () => setSelected(allSelected ? new Set() : new Set(devices.map(d => d.id)));
+  const toggle      = (id: number) => setSelected(s => { const n = new Set(s); n.has(id) ? n.delete(id) : n.add(id); return n; });
+
+  const unblock = async (id: number) => {
     try {
       await securityApi.unblockDevice(id);
       success('Device unblocked.');
       setDevices(d => d.filter(x => x.id !== id));
+      setSelected(s => { const n = new Set(s); n.delete(id); return n; });
       onRefresh();
     } catch { error('Failed to unblock device.'); }
+  };
+
+  const bulkDelete = async () => {
+    if (!selected.size) return;
+    setDeleting(true);
+    try {
+      await securityApi.bulkDeleteBlockedDevices([...selected]);
+      success(`${selected.size} device${selected.size > 1 ? 's' : ''} unblocked.`);
+      load();
+      onRefresh();
+    } catch { error('Bulk delete failed.'); }
+    finally { setDeleting(false); }
   };
 
   return (
@@ -475,11 +587,21 @@ function BlockedDevicesTable({ onRefresh }: { onRefresh: () => void }) {
           {devices.length > 0 && (
             <span className="bg-violet-100 text-violet-700 text-xs font-bold px-2 py-0.5 rounded-full">{devices.length}</span>
           )}
-          <span className="text-xs text-earth-400 ml-1">— device-level blocks, other devices on the same IP are unaffected</span>
+          <span className="text-xs text-earth-400 ml-1 hidden sm:inline">— device-level blocks, other devices on the same IP are unaffected</span>
         </div>
-        <div className="relative w-full sm:w-48">
+        <div className="flex items-center gap-2">
+          {selected.size > 0 && (
+            <button
+              onClick={bulkDelete}
+              disabled={deleting}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-red-600 text-white hover:bg-red-700 disabled:opacity-50 transition-colors"
+            >
+              <Trash2 size={12} />
+              {deleting ? 'Deleting…' : `Unblock ${selected.size}`}
+            </button>
+          )}
           <input
-            className="input w-full text-sm"
+            className="input w-48 text-sm"
             placeholder="Filter by IP or signature…"
             value={search}
             onChange={e => setSearch(e.target.value)}
@@ -494,6 +616,10 @@ function BlockedDevicesTable({ onRefresh }: { onRefresh: () => void }) {
           <table className="w-full text-sm">
             <thead className="sticky top-0 z-10">
               <tr className="bg-earth-50/80 border-b border-earth-100">
+                <th className="pl-4 pr-2 py-2.5 w-8">
+                  <input type="checkbox" checked={allSelected} onChange={toggleAll}
+                    className="rounded border-earth-300 text-primary-600 focus:ring-primary-500 cursor-pointer" />
+                </th>
                 <th className="px-4 py-2.5 text-left text-xs font-semibold text-earth-500 uppercase tracking-wide">Signature</th>
                 <th className="px-4 py-2.5 text-left text-xs font-semibold text-earth-500 uppercase tracking-wide">IP (at block time)</th>
                 <th className="px-4 py-2.5 text-left text-xs font-semibold text-earth-500 uppercase tracking-wide hidden lg:table-cell">User Agent</th>
@@ -504,9 +630,13 @@ function BlockedDevicesTable({ onRefresh }: { onRefresh: () => void }) {
             </thead>
             <tbody className="divide-y divide-earth-50">
               {devices.length === 0 ? (
-                <tr><td colSpan={6} className="px-4 py-10 text-center text-earth-400">No blocked devices.</td></tr>
+                <tr><td colSpan={7} className="px-4 py-10 text-center text-earth-400">No blocked devices.</td></tr>
               ) : devices.map(d => (
-                <tr key={d.id} className="hover:bg-earth-50/40">
+                <tr key={d.id} className={`hover:bg-earth-50/40 ${selected.has(d.id) ? 'bg-violet-50/40' : ''}`}>
+                  <td className="pl-4 pr-2 py-3">
+                    <input type="checkbox" checked={selected.has(d.id)} onChange={() => toggle(d.id)}
+                      className="rounded border-earth-300 text-primary-600 focus:ring-primary-500 cursor-pointer" />
+                  </td>
                   <td className="px-4 py-3">
                     <span className="font-mono text-xs bg-violet-50 text-violet-700 px-2 py-1 rounded font-bold">
                       {d.signature_short}
@@ -526,7 +656,7 @@ function BlockedDevicesTable({ onRefresh }: { onRefresh: () => void }) {
                   </td>
                   <td className="px-4 py-3 text-right">
                     <button
-                      onClick={() => unblock(d.id, d.device_signature)}
+                      onClick={() => unblock(d.id)}
                       className="flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-md bg-earth-50 text-earth-600 hover:bg-earth-100 transition-colors ml-auto"
                     >
                       <Trash2 size={11} /> Unblock
@@ -542,37 +672,177 @@ function BlockedDevicesTable({ onRefresh }: { onRefresh: () => void }) {
   );
 }
 
-// ── Main Page ─────────────────────────────────────────────────────────────────
+// ── Error Requests Table ──────────────────────────────────────────────────────
 
-export function PerformancePage() {
-  const { success, error } = useToast();
-  const [stats, setStats]         = useState<SecurityStats | null>(null);
-  const [blocked, setBlocked]     = useState<BlockedIP[]>([]);
-  const [loading, setLoading]     = useState(true);
-  const [blockModal, setBlockModal] = useState<{ open: boolean; prefillIP: string }>({ open: false, prefillIP: '' });
+const STATUS_COLOR: Record<number, string> = {
+  400: 'bg-amber-100 text-amber-700',
+  401: 'bg-orange-100 text-orange-700',
+  403: 'bg-orange-100 text-orange-700',
+  404: 'bg-yellow-100 text-yellow-700',
+  429: 'bg-purple-100 text-purple-700',
+  500: 'bg-red-100 text-red-700',
+  502: 'bg-red-100 text-red-700',
+  503: 'bg-red-100 text-red-700',
+};
+
+function statusColor(code: number | null) {
+  if (!code) return 'bg-earth-100 text-earth-500';
+  if (STATUS_COLOR[code]) return STATUS_COLOR[code];
+  if (code >= 500) return 'bg-red-100 text-red-700';
+  if (code >= 400) return 'bg-amber-100 text-amber-700';
+  return 'bg-earth-100 text-earth-500';
+}
+
+function ErrorRequestsTable() {
+  const { error } = useToast();
+  const [rows, setRows]       = useState<ErrorRequestLog[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [search, setSearch]   = useState('');
+  const [days, setDays]           = useState(1);
+  const [minStatus, setMinStatus] = useState(400);
+  const [limit, setLimit]         = useState(200);
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const [statsRes, blockedRes] = await Promise.all([
-        securityApi.stats(),
-        securityApi.blockedIPs(),
-      ]);
-      setStats(statsRes.data);
-      setBlocked(blockedRes.data as BlockedIP[]);
+      const r = await securityApi.errorRequests({ days, min_status: minStatus, search: search || undefined, limit });
+      setRows(r.data);
+    } catch { error('Failed to load error requests.'); }
+    finally { setLoading(false); }
+  }, [search, days, minStatus, limit]);
+
+  useEffect(() => { load(); }, [load]);
+
+  const counts = rows.reduce<Record<number, number>>((acc, r) => {
+    if (r.status_code) acc[r.status_code] = (acc[r.status_code] || 0) + 1;
+    return acc;
+  }, {});
+
+  return (
+    <div className="bg-white rounded-xl border border-earth-100 shadow-sm overflow-hidden">
+      <div className="px-5 py-4 border-b border-earth-100 flex flex-col sm:flex-row sm:items-center gap-3">
+        <div className="flex items-center gap-2 flex-1">
+          <AlertTriangle size={15} className="text-red-500" />
+          <h2 className="text-sm font-semibold text-earth-800">Error Requests</h2>
+          {rows.length > 0 && (
+            <span className="bg-red-100 text-red-700 text-xs font-bold px-2 py-0.5 rounded-full">{rows.length}</span>
+          )}
+          {/* mini breakdown badges */}
+          {Object.entries(counts).sort(([a],[b]) => +a - +b).map(([code, cnt]) => (
+            <span key={code} className={`text-xs font-bold px-2 py-0.5 rounded-full hidden sm:inline ${statusColor(+code)}`}>
+              {code} ×{cnt}
+            </span>
+          ))}
+        </div>
+        <div className="flex items-center gap-2 flex-wrap">
+          <select
+            className="input text-sm w-32"
+            value={days}
+            onChange={e => setDays(+e.target.value)}
+          >
+            <option value={1}>Today</option>
+            <option value={2}>Yesterday + today</option>
+            <option value={7}>Last 7 days</option>
+            <option value={30}>Last 30 days</option>
+            <option value={90}>Last 3 months</option>
+            <option value={180}>Last 6 months</option>
+          </select>
+          <select
+            className="input text-sm w-28"
+            value={minStatus}
+            onChange={e => setMinStatus(+e.target.value)}
+          >
+            <option value={400}>4xx + 5xx</option>
+            <option value={500}>5xx only</option>
+          </select>
+          <select
+            className="input text-sm w-24"
+            value={limit}
+            onChange={e => setLimit(+e.target.value)}
+          >
+            <option value={100}>100 rows</option>
+            <option value={200}>200 rows</option>
+            <option value={500}>500 rows</option>
+          </select>
+          <input
+            className="input w-44 text-sm"
+            placeholder="Filter by IP or path…"
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+          />
+          <button onClick={load} className="p-2 rounded-lg border border-earth-200 hover:bg-earth-50 text-earth-500 transition-colors">
+            <RefreshCw size={13} />
+          </button>
+        </div>
+      </div>
+
+      {loading ? (
+        <div className="py-8 flex justify-center"><div className="w-5 h-5 border-2 border-red-400 border-t-transparent rounded-full animate-spin" /></div>
+      ) : (
+        <div className="overflow-x-auto max-h-96 overflow-y-auto">
+          <table className="w-full text-sm">
+            <thead className="sticky top-0 z-10">
+              <tr className="bg-earth-50/80 border-b border-earth-100">
+                <th className="px-4 py-2.5 text-center text-xs font-semibold text-earth-500 uppercase tracking-wide w-16">Status</th>
+                <th className="px-4 py-2.5 text-left text-xs font-semibold text-earth-500 uppercase tracking-wide w-16">Method</th>
+                <th className="px-4 py-2.5 text-left text-xs font-semibold text-earth-500 uppercase tracking-wide">Path</th>
+                <th className="px-4 py-2.5 text-left text-xs font-semibold text-earth-500 uppercase tracking-wide hidden md:table-cell">IP</th>
+                <th className="px-4 py-2.5 text-right text-xs font-semibold text-earth-500 uppercase tracking-wide hidden sm:table-cell">ms</th>
+                <th className="px-4 py-2.5 text-left text-xs font-semibold text-earth-500 uppercase tracking-wide hidden lg:table-cell">User Agent</th>
+                <th className="px-4 py-2.5 text-left text-xs font-semibold text-earth-500 uppercase tracking-wide">Time</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-earth-50">
+              {rows.length === 0 ? (
+                <tr><td colSpan={7} className="px-4 py-10 text-center text-earth-400">No error requests found.</td></tr>
+              ) : rows.map(r => (
+                <tr key={r.id} className="hover:bg-earth-50/40">
+                  <td className="px-4 py-2.5 text-center">
+                    <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${statusColor(r.status_code)}`}>
+                      {r.status_code ?? '—'}
+                    </span>
+                  </td>
+                  <td className="px-4 py-2.5 font-mono font-bold text-xs" style={{ color: METHOD_COLOR[r.method] ?? '#b86a14' }}>
+                    {r.method}
+                  </td>
+                  <td className="px-4 py-2.5 font-mono text-xs text-earth-700 max-w-[220px] truncate">{r.path}</td>
+                  <td className="px-4 py-2.5 font-mono text-xs text-earth-500 hidden md:table-cell">{r.ip || '—'}</td>
+                  <td className="px-4 py-2.5 text-right text-xs text-earth-400 hidden sm:table-cell tabular-nums">
+                    {r.response_time_ms != null ? r.response_time_ms : '—'}
+                  </td>
+                  <td className="px-4 py-2.5 text-xs text-earth-400 max-w-[180px] truncate hidden lg:table-cell">{r.user_agent || '—'}</td>
+                  <td className="px-4 py-2.5 text-xs text-earth-400 whitespace-nowrap">
+                    {new Date(r.created_at).toLocaleString()}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Main Page ─────────────────────────────────────────────────────────────────
+
+export function PerformancePage() {
+  const { error } = useToast();
+  const [stats, setStats]           = useState<SecurityStats | null>(null);
+  const [loading, setLoading]       = useState(true);
+  const [blockModal, setBlockModal] = useState<{ open: boolean; prefillIP: string }>({ open: false, prefillIP: '' });
+  const [ipRefresh, setIpRefresh]   = useState(0);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const r = await securityApi.stats();
+      setStats(r.data);
     } catch { error('Failed to load performance data.'); }
     finally { setLoading(false); }
   }, []);
 
   useEffect(() => { load(); }, [load]);
-
-  const unblock = async (id: number, ip: string) => {
-    try {
-      await securityApi.unblockIP(id);
-      success(`Unblocked ${ip}`);
-      setBlocked(prev => prev.filter(b => b.id !== id));
-    } catch { error('Failed to unblock IP.'); }
-  };
 
   const openBlockModal = (ip = '') => setBlockModal({ open: true, prefillIP: ip });
 
@@ -758,6 +1028,9 @@ export function PerformancePage() {
         </div>
       </div>
 
+      {/* ── Error Requests table ── */}
+      <ErrorRequestsTable />
+
       {/* ── Violations full table ── */}
       <ViolationsTable onBlock={ip => { load(); openBlockModal(ip); }} />
 
@@ -765,14 +1038,18 @@ export function PerformancePage() {
       <BlockedDevicesTable onRefresh={load} />
 
       {/* ── Blocked IPs full table (network-level, blocks all devices on that IP) ── */}
-      <BlockedIPsTable blocked={blocked} onUnblock={unblock} onAddClick={() => openBlockModal()} />
+      <BlockedIPsTable
+        refreshTrigger={ipRefresh}
+        onAddClick={() => openBlockModal()}
+        onStatsRefresh={load}
+      />
 
       {/* ── Block IP Modal ── */}
       {blockModal.open && (
         <BlockIPModal
           prefillIP={blockModal.prefillIP}
           onClose={() => setBlockModal({ open: false, prefillIP: '' })}
-          onSaved={load}
+          onSaved={() => { setIpRefresh(n => n + 1); load(); }}
         />
       )}
     </div>
