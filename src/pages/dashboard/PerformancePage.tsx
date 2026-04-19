@@ -245,7 +245,9 @@ function ConfigPanel({ onUpdated }: { onUpdated: () => void }) {
 
 // ── Violations Table ──────────────────────────────────────────────────────────
 
-function ViolationsTable({ onBlock }: { onBlock: (ip: string) => void }) {
+function ViolationsTable({ onBlock, refreshTrigger, onMutate }: {
+  onBlock: (ip: string) => void; refreshTrigger: number; onMutate: () => void;
+}) {
   const { success, error } = useToast();
   const [violations, setViolations] = useState<RateLimitViolation[]>([]);
   const [loading, setLoading]       = useState(true);
@@ -264,7 +266,7 @@ function ViolationsTable({ onBlock }: { onBlock: (ip: string) => void }) {
     finally { setLoading(false); }
   }, [search]);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => { load(); }, [load, refreshTrigger]);
 
   const allSelected = violations.length > 0 && selected.size === violations.length;
   const toggleAll   = () => setSelected(allSelected ? new Set() : new Set(violations.map(v => v.id)));
@@ -276,6 +278,7 @@ function ViolationsTable({ onBlock }: { onBlock: (ip: string) => void }) {
       setViolations(v => v.filter(x => x.id !== id));
       setSelected(s => { const n = new Set(s); n.delete(id); return n; });
       success('Violation cleared.');
+      onMutate();
     } catch { error('Failed to clear.'); }
   };
 
@@ -286,6 +289,7 @@ function ViolationsTable({ onBlock }: { onBlock: (ip: string) => void }) {
       await securityApi.bulkDeleteViolations([...selected]);
       success(`${selected.size} violation${selected.size > 1 ? 's' : ''} deleted.`);
       load();
+      onMutate();
     } catch { error('Bulk delete failed.'); }
     finally { setDeleting(false); }
   };
@@ -296,6 +300,7 @@ function ViolationsTable({ onBlock }: { onBlock: (ip: string) => void }) {
       await securityApi.blockFromViolation(v.id);
       success(`Device ${v.signature_short} blocked.`);
       onBlock(v.ip || '');
+      onMutate();
     } catch (err: unknown) {
       const msg = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail;
       error(msg || 'Failed to block device.');
@@ -390,8 +395,8 @@ function ViolationsTable({ onBlock }: { onBlock: (ip: string) => void }) {
 
 // ── Blocked IPs Table ─────────────────────────────────────────────────────────
 
-function BlockedIPsTable({ refreshTrigger, onAddClick, onStatsRefresh }: {
-  refreshTrigger: number; onAddClick: () => void; onStatsRefresh: () => void;
+function BlockedIPsTable({ refreshTrigger, onAddClick, onMutate }: {
+  refreshTrigger: number; onAddClick: () => void; onMutate: () => void;
 }) {
   const { success, error } = useToast();
   const [blocked, setBlocked]   = useState<BlockedIP[]>([]);
@@ -422,7 +427,7 @@ function BlockedIPsTable({ refreshTrigger, onAddClick, onStatsRefresh }: {
       success(`Unblocked ${ip}`);
       setBlocked(prev => prev.filter(b => b.id !== id));
       setSelected(s => { const n = new Set(s); n.delete(id); return n; });
-      onStatsRefresh();
+      onMutate();
     } catch { error('Failed to unblock IP.'); }
   };
 
@@ -433,7 +438,7 @@ function BlockedIPsTable({ refreshTrigger, onAddClick, onStatsRefresh }: {
       await securityApi.bulkDeleteBlockedIPs([...selected]);
       success(`${selected.size} IP${selected.size > 1 ? 's' : ''} unblocked.`);
       load();
-      onStatsRefresh();
+      onMutate();
     } catch { error('Bulk delete failed.'); }
     finally { setDeleting(false); }
   };
@@ -532,7 +537,9 @@ function BlockedIPsTable({ refreshTrigger, onAddClick, onStatsRefresh }: {
 
 // ── Blocked Devices Table ─────────────────────────────────────────────────────
 
-function BlockedDevicesTable({ onRefresh }: { onRefresh: () => void }) {
+function BlockedDevicesTable({ refreshTrigger, onMutate }: {
+  refreshTrigger: number; onMutate: () => void;
+}) {
   const { success, error } = useToast();
   const [devices, setDevices]   = useState<BlockedDevice[]>([]);
   const [loading, setLoading]   = useState(true);
@@ -550,7 +557,7 @@ function BlockedDevicesTable({ onRefresh }: { onRefresh: () => void }) {
     finally { setLoading(false); }
   }, [search]);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => { load(); }, [load, refreshTrigger]);
 
   const allSelected = devices.length > 0 && selected.size === devices.length;
   const toggleAll   = () => setSelected(allSelected ? new Set() : new Set(devices.map(d => d.id)));
@@ -562,7 +569,7 @@ function BlockedDevicesTable({ onRefresh }: { onRefresh: () => void }) {
       success('Device unblocked.');
       setDevices(d => d.filter(x => x.id !== id));
       setSelected(s => { const n = new Set(s); n.delete(id); return n; });
-      onRefresh();
+      onMutate();
     } catch { error('Failed to unblock device.'); }
   };
 
@@ -573,7 +580,7 @@ function BlockedDevicesTable({ onRefresh }: { onRefresh: () => void }) {
       await securityApi.bulkDeleteBlockedDevices([...selected]);
       success(`${selected.size} device${selected.size > 1 ? 's' : ''} unblocked.`);
       load();
-      onRefresh();
+      onMutate();
     } catch { error('Bulk delete failed.'); }
     finally { setDeleting(false); }
   };
@@ -693,7 +700,7 @@ function statusColor(code: number | null) {
   return 'bg-earth-100 text-earth-500';
 }
 
-function ErrorRequestsTable() {
+function ErrorRequestsTable({ refreshTrigger }: { refreshTrigger: number }) {
   const { error } = useToast();
   const [rows, setRows]       = useState<ErrorRequestLog[]>([]);
   const [loading, setLoading] = useState(true);
@@ -711,7 +718,7 @@ function ErrorRequestsTable() {
     finally { setLoading(false); }
   }, [search, days, minStatus, limit]);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => { load(); }, [load, refreshTrigger]);
 
   const counts = rows.reduce<Record<number, number>>((acc, r) => {
     if (r.status_code) acc[r.status_code] = (acc[r.status_code] || 0) + 1;
@@ -831,9 +838,9 @@ export function PerformancePage() {
   const [stats, setStats]           = useState<SecurityStats | null>(null);
   const [loading, setLoading]       = useState(true);
   const [blockModal, setBlockModal] = useState<{ open: boolean; prefillIP: string }>({ open: false, prefillIP: '' });
-  const [ipRefresh, setIpRefresh]   = useState(0);
+  const [tick, setTick] = useState(0);
 
-  const load = useCallback(async () => {
+  const loadStats = useCallback(async () => {
     setLoading(true);
     try {
       const r = await securityApi.stats();
@@ -842,7 +849,13 @@ export function PerformancePage() {
     finally { setLoading(false); }
   }, []);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => { loadStats(); }, [loadStats]);
+
+  // increment tick after any mutating action → all sub-tables re-fetch
+  const onMutate = useCallback(() => {
+    setTick(t => t + 1);
+    loadStats();
+  }, [loadStats]);
 
   const openBlockModal = (ip = '') => setBlockModal({ open: true, prefillIP: ip });
 
@@ -855,12 +868,12 @@ export function PerformancePage() {
   return (
     <div className="space-y-6">
       {/* ── Header ── */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <h1 className="text-xl font-bold text-earth-900">Performance & Security</h1>
           <p className="text-sm text-earth-500 mt-0.5">Request monitoring, IP control and rate-limit management</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex items-center gap-2">
           <button
             onClick={() => openBlockModal()}
             className="flex items-center gap-1.5 px-3 py-2 text-sm bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
@@ -868,7 +881,7 @@ export function PerformancePage() {
             <Plus size={14} /> Block IP
           </button>
           <button
-            onClick={load}
+            onClick={onMutate}
             className="flex items-center gap-1.5 px-3 py-2 text-sm bg-white border border-earth-200 rounded-lg hover:bg-earth-50 transition-colors text-earth-600"
           >
             <RefreshCw size={14} /> Refresh
@@ -877,10 +890,10 @@ export function PerformancePage() {
       </div>
 
       {/* ── Config Panel ── */}
-      <ConfigPanel onUpdated={load} />
+      <ConfigPanel onUpdated={onMutate} />
 
       {/* ── Summary Cards ── */}
-      <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         <StatCard icon={Activity}      label="Requests Today"  value={s.total_requests_today.toLocaleString()} color="primary" />
         <StatCard icon={TrendingUp}    label="This Week"       value={s.total_requests_week.toLocaleString()}  color="green" />
         <StatCard icon={Clock}         label="Avg Response"    value={`${s.avg_response_time_ms} ms`}          color="primary" />
@@ -1029,19 +1042,23 @@ export function PerformancePage() {
       </div>
 
       {/* ── Error Requests table ── */}
-      <ErrorRequestsTable />
+      <ErrorRequestsTable refreshTrigger={tick} />
 
       {/* ── Violations full table ── */}
-      <ViolationsTable onBlock={ip => { load(); openBlockModal(ip); }} />
+      <ViolationsTable
+        refreshTrigger={tick}
+        onMutate={onMutate}
+        onBlock={ip => { onMutate(); openBlockModal(ip); }}
+      />
 
-      {/* ── Blocked Devices table (device-level, doesn't affect other devices on same IP) ── */}
-      <BlockedDevicesTable onRefresh={load} />
+      {/* ── Blocked Devices table ── */}
+      <BlockedDevicesTable refreshTrigger={tick} onMutate={onMutate} />
 
-      {/* ── Blocked IPs full table (network-level, blocks all devices on that IP) ── */}
+      {/* ── Blocked IPs full table ── */}
       <BlockedIPsTable
-        refreshTrigger={ipRefresh}
+        refreshTrigger={tick}
         onAddClick={() => openBlockModal()}
-        onStatsRefresh={load}
+        onMutate={onMutate}
       />
 
       {/* ── Block IP Modal ── */}
@@ -1049,7 +1066,7 @@ export function PerformancePage() {
         <BlockIPModal
           prefillIP={blockModal.prefillIP}
           onClose={() => setBlockModal({ open: false, prefillIP: '' })}
-          onSaved={() => { setIpRefresh(n => n + 1); load(); }}
+          onSaved={() => { onMutate(); }}
         />
       )}
     </div>

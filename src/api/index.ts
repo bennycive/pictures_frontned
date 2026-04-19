@@ -1,5 +1,5 @@
 import api from './client';
-import type { Paginated, Artwork, Category, Currency, Auction, Cart, Order, Profile, Wallet, ActivityLog, TokenResponse, User, Role, Permission, AdminUser, HeroContent, LandingHero, ContactInfo, ContactMessage, ArtistProfile, Exhibition, AdminWallet, BlockedIP, BlockedDevice, SecurityStats, SecurityConfig, RateLimitViolation, ErrorRequestLog } from './types';
+import type { Paginated, Artwork, Category, Currency, Auction, Cart, Order, Profile, Wallet, ActivityLog, TokenResponse, User, Role, Permission, AdminUser, HeroContent, LandingHero, ContactInfo, ContactMessage, ArtistProfile, Exhibition, AdminWallet, BlockedIP, BlockedDevice, SecurityStats, SecurityConfig, RateLimitViolation, ErrorRequestLog, Address } from './types';
 
 // Auth
 export const authApi = {
@@ -96,6 +96,17 @@ export const ordersApi = {
     api.post<Order>('/api/orders/checkout/', data),
   updateStatus: (uuid: string, status: string) =>
     api.put<Order>(`/api/orders/${uuid}/status/`, { status }),
+};
+
+// Addresses
+export const addressesApi = {
+  list: () => api.get<Address[]>('/api/addresses/'),
+  create: (data: Omit<Address, 'id' | 'is_default' | 'created_at' | 'updated_at'>) =>
+    api.post<Address>('/api/addresses/', data),
+  update: (id: number, data: Partial<Omit<Address, 'id' | 'is_default' | 'created_at' | 'updated_at'>>) =>
+    api.patch<Address>(`/api/addresses/${id}/`, data),
+  delete: (id: number) => api.delete(`/api/addresses/${id}/`),
+  setDefault: (id: number) => api.post<Address>(`/api/addresses/${id}/set-default/`),
 };
 
 // Profile

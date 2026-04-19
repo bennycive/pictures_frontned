@@ -314,6 +314,19 @@ export interface Exhibition {
   order: number;
 }
 
+export interface Address {
+  id: number;
+  label: string;
+  full_name: string;
+  phone: string;
+  address: string;
+  city: string;
+  country: string;
+  is_default: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface ErrorRequestLog {
   id: number;
   ip: string;

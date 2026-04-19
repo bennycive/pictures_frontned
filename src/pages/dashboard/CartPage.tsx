@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
-import { Trash2, ShoppingCart, ArrowRight } from 'lucide-react';
-import { cartApi, ordersApi } from '../../api';
-import type { Cart } from '../../api/types';
+import { Trash2, ShoppingCart, ArrowRight, MapPin, ChevronDown } from 'lucide-react';
+import { cartApi, ordersApi, addressesApi } from '../../api';
+import type { Cart, Address } from '../../api/types';
 import { Modal } from '../../components/ui/Modal';
 import { useToast } from '../../components/ui/Toast';
 import { swal } from '../../lib/swal';
@@ -13,16 +13,23 @@ interface CheckoutForm {
   delivery_city: string; delivery_country: string; notes: string;
 }
 
+const BLANK: CheckoutForm = {
+  delivery_name: '', delivery_phone: '', delivery_address: '',
+  delivery_city: '', delivery_country: 'Tanzania', notes: '',
+};
+
 export function CartPage() {
   const { error } = useToast();
   const navigate = useNavigate();
   const [cart, setCart] = useState<Cart | null>(null);
   const [loading, setLoading] = useState(true);
   const [checkoutOpen, setCheckoutOpen] = useState(false);
-  const [checkoutForm, setCheckoutForm] = useState<CheckoutForm>({
-    delivery_name: '', delivery_phone: '', delivery_address: '', delivery_city: '', delivery_country: 'Tanzania', notes: ''
-  });
+  const [checkoutForm, setCheckoutForm] = useState<CheckoutForm>(BLANK);
   const [placing, setPlacing] = useState(false);
+
+  // saved addresses
+  const [addresses, setAddresses] = useState<Address[]>([]);
+  const [selectedAddrId, setSelectedAddrId] = useState<number | 'manual'>('manual');
 
   const load = async () => {
     setLoading(true);
@@ -31,7 +38,53 @@ export function CartPage() {
     finally { setLoading(false); }
   };
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => { load(); }, []); // eslint-disable-line
+
+  const openCheckout = async () => {
+    try {
+      const { data } = await addressesApi.list();
+      setAddresses(data);
+      const def = data.find(a => a.is_default) ?? data[0] ?? null;
+      if (def) {
+        setSelectedAddrId(def.id);
+        setCheckoutForm(f => ({
+          ...f,
+          delivery_name: def.full_name,
+          delivery_phone: def.phone,
+          delivery_address: def.address,
+          delivery_city: def.city,
+          delivery_country: def.country,
+        }));
+      } else {
+        setSelectedAddrId('manual');
+        setCheckoutForm(BLANK);
+      }
+    } catch {
+      setAddresses([]);
+      setSelectedAddrId('manual');
+      setCheckoutForm(BLANK);
+    }
+    setCheckoutOpen(true);
+  };
+
+  const handleSelectAddress = (id: number | 'manual') => {
+    setSelectedAddrId(id);
+    if (id === 'manual') {
+      setCheckoutForm(BLANK);
+      return;
+    }
+    const addr = addresses.find(a => a.id === id);
+    if (addr) {
+      setCheckoutForm(f => ({
+        ...f,
+        delivery_name: addr.full_name,
+        delivery_phone: addr.phone,
+        delivery_address: addr.address,
+        delivery_city: addr.city,
+        delivery_country: addr.country,
+      }));
+    }
+  };
 
   const handleRemove = async (uuid: string, name: string) => {
     const ok = await swal.confirmDelete(`"${name}" will be removed from your cart.`);
@@ -105,7 +158,7 @@ export function CartPage() {
               <span>Total</span>
               <span className="text-primary-700">{cart?.total}</span>
             </div>
-            <button onClick={() => setCheckoutOpen(true)} className="btn-primary w-full flex items-center justify-center gap-2">
+            <button onClick={openCheckout} className="btn-primary w-full flex items-center justify-center gap-2">
               Checkout <ArrowRight size={16} />
             </button>
           </div>
@@ -115,37 +168,103 @@ export function CartPage() {
       {/* Checkout modal */}
       <Modal open={checkoutOpen} onClose={() => setCheckoutOpen(false)} title="Checkout" size="lg">
         <form onSubmit={handleCheckout} className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
+
+          {/* Saved address picker */}
+          {addresses.length > 0 && (
             <div>
-              <label className="block text-sm font-medium text-earth-700 mb-1">Full Name</label>
-              <input className="input" value={checkoutForm.delivery_name} onChange={e => setCheckoutForm(f => ({ ...f, delivery_name: e.target.value }))} required />
+              <label className="block text-sm font-medium text-earth-700 mb-2 flex items-center gap-1.5">
+                <MapPin size={14} className="text-primary-500" /> Delivery Address
+              </label>
+              <div className="space-y-2">
+                {addresses.map(addr => (
+                  <label
+                    key={addr.id}
+                    className={`flex items-start gap-3 p-3 rounded-xl border cursor-pointer transition-colors ${
+                      selectedAddrId === addr.id
+                        ? 'border-primary-400 bg-primary-50/40'
+                        : 'border-earth-100 hover:border-earth-300'
+                    }`}
+                  >
+                    <input
+                      type="radio"
+                      name="addr"
+                      className="mt-1 accent-primary-600"
+                      checked={selectedAddrId === addr.id}
+                      onChange={() => handleSelectAddress(addr.id)}
+                    />
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        {addr.label && <span className="text-xs font-bold text-earth-500 uppercase">{addr.label}</span>}
+                        {addr.is_default && <span className="text-[10px] font-bold bg-primary-100 text-primary-700 px-1.5 py-0.5 rounded-full">Default</span>}
+                      </div>
+                      <p className="text-sm font-semibold text-earth-800">{addr.full_name}</p>
+                      <p className="text-xs text-earth-500">{addr.address}, {addr.city}, {addr.country}</p>
+                      {addr.phone && <p className="text-xs text-earth-400">{addr.phone}</p>}
+                    </div>
+                  </label>
+                ))}
+                <label
+                  className={`flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-colors ${
+                    selectedAddrId === 'manual'
+                      ? 'border-primary-400 bg-primary-50/40'
+                      : 'border-earth-100 hover:border-earth-300'
+                  }`}
+                >
+                  <input
+                    type="radio"
+                    name="addr"
+                    className="accent-primary-600"
+                    checked={selectedAddrId === 'manual'}
+                    onChange={() => handleSelectAddress('manual')}
+                  />
+                  <span className="text-sm text-earth-600 flex items-center gap-1.5">
+                    <ChevronDown size={14} /> Enter a different address
+                  </span>
+                </label>
+              </div>
             </div>
-            <div>
-              <label className="block text-sm font-medium text-earth-700 mb-1">Phone</label>
-              <input className="input" value={checkoutForm.delivery_phone} onChange={e => setCheckoutForm(f => ({ ...f, delivery_phone: e.target.value }))} required />
-            </div>
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-earth-700 mb-1">Address</label>
-            <textarea className="input h-20 resize-none" value={checkoutForm.delivery_address} onChange={e => setCheckoutForm(f => ({ ...f, delivery_address: e.target.value }))} required />
-          </div>
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-earth-700 mb-1">City</label>
-              <input className="input" value={checkoutForm.delivery_city} onChange={e => setCheckoutForm(f => ({ ...f, delivery_city: e.target.value }))} required />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-earth-700 mb-1">Country</label>
-              <input className="input" value={checkoutForm.delivery_country} onChange={e => setCheckoutForm(f => ({ ...f, delivery_country: e.target.value }))} />
-            </div>
-          </div>
+          )}
+
+          {/* Manual form — shown when no saved addresses or "different address" selected */}
+          {(addresses.length === 0 || selectedAddrId === 'manual') && (
+            <>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-earth-700 mb-1">Full Name</label>
+                  <input className="input" value={checkoutForm.delivery_name} onChange={e => setCheckoutForm(f => ({ ...f, delivery_name: e.target.value }))} required />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-earth-700 mb-1">Phone</label>
+                  <input className="input" value={checkoutForm.delivery_phone} onChange={e => setCheckoutForm(f => ({ ...f, delivery_phone: e.target.value }))} required />
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-earth-700 mb-1">Address</label>
+                <textarea className="input h-20 resize-none" value={checkoutForm.delivery_address} onChange={e => setCheckoutForm(f => ({ ...f, delivery_address: e.target.value }))} required />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-earth-700 mb-1">City</label>
+                  <input className="input" value={checkoutForm.delivery_city} onChange={e => setCheckoutForm(f => ({ ...f, delivery_city: e.target.value }))} required />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-earth-700 mb-1">Country</label>
+                  <input className="input" value={checkoutForm.delivery_country} onChange={e => setCheckoutForm(f => ({ ...f, delivery_country: e.target.value }))} />
+                </div>
+              </div>
+            </>
+          )}
+
           <div>
             <label className="block text-sm font-medium text-earth-700 mb-1">Notes (optional)</label>
             <textarea className="input h-16 resize-none" value={checkoutForm.notes} onChange={e => setCheckoutForm(f => ({ ...f, notes: e.target.value }))} />
           </div>
           <div className="flex gap-3 pt-2">
             <button type="button" onClick={() => setCheckoutOpen(false)} className="btn-secondary flex-1">Cancel</button>
-            <button type="submit" disabled={placing} className="btn-primary flex-1">{placing ? 'Placing order...' : 'Place Order'}</button>
+            <button type="submit" disabled={placing} className="btn-primary flex-1">
+              {placing ? <Spinner size="sm" /> : null}
+              {placing ? 'Placing order…' : 'Place Order'}
+            </button>
           </div>
         </form>
       </Modal>
