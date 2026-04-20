@@ -20,7 +20,7 @@ const EMPTY: AddrFields = { label: '', full_name: '', phone: '', address: '', ci
 function AddressModal({ initial, onClose, onSaved }: {
   initial?: Address | null; onClose: () => void; onSaved: () => void;
 }) {
-  const { success, error } = useToast();
+  const { error } = useToast();
   const [form, setForm] = useState<AddrFields>(
     initial
       ? { label: initial.label, full_name: initial.full_name, phone: initial.phone, address: initial.address, city: initial.city, country: initial.country }
@@ -36,7 +36,7 @@ function AddressModal({ initial, onClose, onSaved }: {
     try {
       if (initial) await addressesApi.update(initial.id, form);
       else await addressesApi.create(form);
-      success(initial ? 'Address updated.' : 'Address added.');
+      swal.success(initial ? 'Address updated.' : 'Address added.');
       onSaved();
       onClose();
     } catch { error('Failed to save address.'); }
@@ -93,9 +93,8 @@ function AddressModal({ initial, onClose, onSaved }: {
               <input className="input w-full text-sm" placeholder="Tanzania" value={form.country} onChange={set('country')} />
             </div>
           </div>
-          <div className="flex justify-end gap-2 pt-2 border-t border-earth-100">
-            <button type="button" onClick={onClose} className="btn-secondary px-4 py-2 text-sm">Cancel</button>
-            <button type="submit" disabled={saving} className="btn-primary px-5 py-2 text-sm disabled:opacity-50 flex items-center gap-2">
+          <div className="pt-2 border-t border-earth-100">
+            <button type="submit" disabled={saving} className="btn-primary w-full py-2 text-sm disabled:opacity-50 flex items-center justify-center gap-2">
               {saving && <Spinner size="sm" />}
               {saving ? 'Saving…' : initial ? 'Update Address' : 'Add Address'}
             </button>
@@ -189,8 +188,8 @@ export function ProfilePage() {
     setAvatarPreview(URL.createObjectURL(file));
   };
 
-  const handleSaveBio = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSaveBio = async (e?: React.FormEvent) => {
+    e?.preventDefault();
     setSaving(true);
     try {
       const fd = new FormData();
@@ -347,11 +346,22 @@ export function ProfilePage() {
 
       {/* Avatar pending save notice */}
       {avatarFile && (
-        <div className="flex items-center justify-between bg-amber-50 border border-amber-200 rounded-xl px-4 py-3">
-          <p className="text-sm text-amber-700 font-medium">New photo selected — save your profile to apply it.</p>
-          <div className="flex gap-2">
-            <button onClick={() => { setAvatarFile(null); setAvatarPreview(null); }} className="text-xs text-earth-500 hover:text-earth-700 px-2 py-1 rounded">
+        <div className="flex items-center justify-between bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 gap-3">
+          <p className="text-sm text-amber-700 font-medium">New photo selected — apply it now.</p>
+          <div className="flex gap-2 shrink-0">
+            <button
+              onClick={() => { setAvatarFile(null); setAvatarPreview(null); }}
+              className="text-xs text-earth-500 hover:text-earth-700 border border-earth-200 px-3 py-1.5 rounded-lg transition-colors"
+            >
               Discard
+            </button>
+            <button
+              onClick={handleSaveBio}
+              disabled={saving}
+              className="flex items-center gap-1.5 text-xs font-semibold text-white bg-amber-500 hover:bg-amber-600 disabled:opacity-50 px-3 py-1.5 rounded-lg transition-colors"
+            >
+              {saving ? <Spinner size="sm" /> : <Check size={12} />}
+              {saving ? 'Saving…' : 'Save Photo'}
             </button>
           </div>
         </div>
@@ -606,14 +616,6 @@ export function ProfilePage() {
                     </div>
                   ))}
 
-                  {/* Add more card */}
-                  <button
-                    onClick={() => setAddrModal({ open: true, editing: null })}
-                    className="rounded-xl border-2 border-dashed border-earth-200 hover:border-primary-300 hover:bg-primary-50/30 p-4 flex flex-col items-center justify-center gap-2 text-earth-400 hover:text-primary-600 transition-all min-h-[120px]"
-                  >
-                    <Plus size={20} />
-                    <span className="text-xs font-medium">Add address</span>
-                  </button>
                 </div>
               )}
             </div>

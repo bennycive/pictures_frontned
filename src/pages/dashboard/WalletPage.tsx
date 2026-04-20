@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Plus, ArrowUpCircle, ArrowDownCircle, RefreshCw, Search, Wallet as WalletIcon } from 'lucide-react';
+import { Plus, ArrowUpCircle, ArrowDownCircle, RefreshCw, Search, Wallet as WalletIcon, ChevronLeft, ChevronRight } from 'lucide-react';
 import { walletApi, adminWalletsApi } from '../../api';
 import type { Wallet, AdminWallet } from '../../api/types';
 import { Modal } from '../../components/ui/Modal';
@@ -17,6 +17,7 @@ function MyWalletTab() {
   const [amount, setAmount]         = useState('');
   const [description, setDescription] = useState('Manual deposit');
   const [depositing, setDepositing] = useState(false);
+  const [page, setPage]             = useState(1);
 
   const load = async () => {
     setLoading(true);
@@ -42,8 +43,14 @@ function MyWalletTab() {
 
   if (loading) return <SectionSpinner />;
 
+  const PAGE_SIZE = 10;
+
   const txIcons = { deposit: ArrowUpCircle, deduction: ArrowDownCircle, refund: RefreshCw };
   const txColors = { deposit: 'text-green-500', deduction: 'text-red-500', refund: 'text-blue-500' };
+
+  const allTx = wallet?.transactions || [];
+  const totalPages = Math.max(1, Math.ceil(allTx.length / PAGE_SIZE));
+  const pageTx = allTx.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
   return (
     <div className="space-y-6">
@@ -72,38 +79,84 @@ function MyWalletTab() {
       </div>
 
       {/* Transactions */}
-      <div className="bg-white rounded-xl border border-earth-100 p-6">
-        <h3 className="font-semibold text-earth-900 mb-4">Transaction History</h3>
-        {!wallet?.transactions?.length ? (
-          <p className="text-earth-400 text-sm text-center py-8">No transactions yet</p>
+      <div className="bg-white rounded-xl border border-earth-100 overflow-hidden">
+        <div className="px-6 py-4 border-b border-earth-100 flex items-center justify-between">
+          <h3 className="font-semibold text-earth-900">Transaction History</h3>
+          {allTx.length > 0 && (
+            <span className="text-xs font-semibold bg-earth-100 text-earth-500 px-2.5 py-1 rounded-full">
+              {allTx.length} transaction{allTx.length !== 1 ? 's' : ''}
+            </span>
+          )}
+        </div>
+
+        {!allTx.length ? (
+          <p className="text-earth-400 text-sm text-center py-10">No transactions yet</p>
         ) : (
-          <div className="space-y-2">
-            {wallet.transactions.map(tx => {
-              const Icon  = txIcons[tx.type as keyof typeof txIcons] || ArrowUpCircle;
-              const color = txColors[tx.type as keyof typeof txColors] || 'text-gray-500';
-              return (
-                <div key={tx.id} className="flex items-center gap-4 p-4 hover:bg-earth-50 rounded-xl transition-colors">
-                  <div className="w-10 h-10 rounded-full bg-earth-100 flex items-center justify-center shrink-0">
-                    <Icon size={20} className={color} />
+          <>
+            <div className="divide-y divide-earth-50">
+              {pageTx.map(tx => {
+                const Icon  = txIcons[tx.type as keyof typeof txIcons] || ArrowUpCircle;
+                const color = txColors[tx.type as keyof typeof txColors] || 'text-gray-500';
+                return (
+                  <div key={tx.id} className="flex items-center gap-4 px-6 py-4 hover:bg-earth-50 transition-colors">
+                    <div className="w-10 h-10 rounded-full bg-earth-100 flex items-center justify-center shrink-0">
+                      <Icon size={20} className={color} />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-earth-900 truncate">{tx.description}</p>
+                      <p className="text-xs text-earth-400">{new Date(tx.created_at).toLocaleString()}</p>
+                      {tx.reference && <p className="text-xs text-earth-300 font-mono truncate">{tx.reference}</p>}
+                    </div>
+                    <div className="text-right shrink-0 max-w-[140px]">
+                      <p className={`font-bold text-sm break-all ${tx.type === 'deduction' ? 'text-red-600' : 'text-green-600'}`}>
+                        {tx.type === 'deduction' ? '−' : '+'}{wallet!.currency}{' '}
+                        {Number(tx.amount).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      </p>
+                      <p className="text-xs text-earth-400 break-all">
+                        Bal: {Number(tx.balance_after).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      </p>
+                    </div>
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-earth-900 truncate">{tx.description}</p>
-                    <p className="text-xs text-earth-400">{new Date(tx.created_at).toLocaleString()}</p>
-                    {tx.reference && <p className="text-xs text-earth-300 font-mono truncate">{tx.reference}</p>}
-                  </div>
-                  <div className="text-right shrink-0 max-w-[140px]">
-                    <p className={`font-bold text-sm break-all ${tx.type === 'deduction' ? 'text-red-600' : 'text-green-600'}`}>
-                      {tx.type === 'deduction' ? '−' : '+'}{wallet.currency}{' '}
-                      {Number(tx.amount).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                    </p>
-                    <p className="text-xs text-earth-400 break-all">
-                      Bal: {Number(tx.balance_after).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                    </p>
-                  </div>
+                );
+              })}
+            </div>
+
+            {/* Pagination */}
+            {totalPages > 1 && (
+              <div className="px-6 py-3 border-t border-earth-100 flex items-center justify-between text-xs text-earth-500">
+                <span>
+                  Showing {(page - 1) * PAGE_SIZE + 1}–{Math.min(page * PAGE_SIZE, allTx.length)} of {allTx.length}
+                </span>
+                <div className="flex items-center gap-1">
+                  <button
+                    onClick={() => setPage(p => Math.max(1, p - 1))}
+                    disabled={page === 1}
+                    className="p-1.5 rounded-lg hover:bg-earth-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                  >
+                    <ChevronLeft size={14} />
+                  </button>
+                  {Array.from({ length: totalPages }, (_, i) => i + 1).map(p => (
+                    <button
+                      key={p}
+                      onClick={() => setPage(p)}
+                      className={`w-7 h-7 rounded-lg text-xs font-medium transition-colors ${
+                        p === page ? 'bg-primary-600 text-white' : 'hover:bg-earth-100 text-earth-600'
+                      }`}
+                    >
+                      {p}
+                    </button>
+                  ))}
+                  <button
+                    onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                    disabled={page === totalPages}
+                    className="p-1.5 rounded-lg hover:bg-earth-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                  >
+                    <ChevronRight size={14} />
+                  </button>
                 </div>
-              );
-            })}
-          </div>
+              </div>
+            )}
+          </>
         )}
       </div>
 
