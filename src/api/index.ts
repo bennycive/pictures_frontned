@@ -1,5 +1,5 @@
 import api from './client';
-import type { Paginated, Artwork, Category, Currency, Auction, Cart, Order, Profile, Wallet, ActivityLog, TokenResponse, User, Role, Permission, AdminUser, HeroContent, LandingHero, ContactInfo, ContactMessage, ArtistProfile, Exhibition, AdminWallet, BlockedIP, BlockedDevice, SecurityStats, SecurityConfig, RateLimitViolation, ErrorRequestLog, Address } from './types';
+import type { Paginated, Artwork, Category, Currency, Auction, Cart, Order, Profile, Wallet, ActivityLog, TokenResponse, User, Role, Permission, AdminUser, HeroContent, LandingHero, ContactInfo, ContactMessage, ArtistProfile, Exhibition, AdminWallet, BlockedIP, BlockedDevice, SecurityStats, SecurityConfig, RateLimitViolation, ErrorRequestLog, Address, NotificationLog } from './types';
 
 // Auth
 export const authApi = {
@@ -242,6 +242,14 @@ export const securityApi = {
     api.patch<SecurityConfig>('/api/security/config/', data),
   errorRequests: (params?: { days?: number; min_status?: number; search?: string; limit?: number }) =>
     api.get<ErrorRequestLog[]>('/api/security/errors/', { params }),
+};
+
+// Notification logs (admin/staff only)
+export const notificationsApi = {
+  list: (params?: { status?: string; channel?: string; search?: string }) =>
+    api.get<NotificationLog[]>('/api/notifications/', { params }),
+  resend: (id: number) =>
+    api.post<{ detail: string }>(`/api/notifications/${id}/resend/`),
 };
 
 // Admin wallet management

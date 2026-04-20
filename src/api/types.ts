@@ -338,6 +338,18 @@ export interface ErrorRequestLog {
   created_at: string;
 }
 
+export interface NotificationLog {
+  id: number;
+  channel: 'email' | 'sms';
+  recipient: string;
+  subject: string | null;
+  message: string;
+  status: 'sent' | 'failed';
+  error: string | null;
+  causer_name: string | null;
+  sent_at: string;
+}
+
 export interface AdminWallet {
   id: number;
   user_uuid: string;

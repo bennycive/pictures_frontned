@@ -36,14 +36,14 @@ export function AboutPage() {
       {/* Hero */}
       <section className="bg-[#f5ede0] py-20 px-4">
         <div className="max-w-4xl mx-auto text-center">
-          <p className="text-xs font-bold tracking-[0.25em] uppercase text-earth-500 mb-4">The Artist</p>
+          <p className="text-xs font-bold tracking-[0.25em] uppercase text-earth-500 dark:text-earth-400 mb-4">The Artist</p>
           <h1
-            className="text-5xl sm:text-6xl lg:text-7xl mb-5 text-earth-900 leading-tight"
+            className="text-5xl sm:text-6xl lg:text-7xl mb-5 text-earth-900 dark:text-white leading-tight"
             style={{ fontFamily: "'Playfair Display', Georgia, serif", fontStyle: 'italic', fontWeight: 400 }}
           >
             {profile.name}
           </h1>
-          <div className="flex items-center justify-center gap-1.5 text-earth-500 text-sm">
+          <div className="flex items-center justify-center gap-1.5 text-earth-500 dark:text-earth-400 text-sm">
             <MapPin size={15} className="text-primary-500" />
             <span>{profile.location}</span>
           </div>
