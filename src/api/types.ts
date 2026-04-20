@@ -274,6 +274,7 @@ export interface HeroContent {
 
 export interface LandingHero {
   image_url: string | null;
+  favicon_url: string | null;
   updated_at: string;
 }
 

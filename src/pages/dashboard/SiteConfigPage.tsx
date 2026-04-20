@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import {
   Upload, Save, Mail, Phone, MapPin, Image, MessageSquare,
-  Type, User, Plus, Pencil, Trash2, Settings2, Check, X, Eye, EyeOff,
+  Type, User, Plus, Pencil, Trash2, Settings2, Check, X, Eye, EyeOff, Globe,
+  Download, Wand2,
 } from 'lucide-react';
 import { siteApi } from '../../api';
 import type { ArtistProfile, ContactInfo, Exhibition, HeroContent, LandingHero } from '../../api/types';
@@ -147,6 +148,252 @@ function HeroImageCard() {
           )}
         </div>
       )}
+    </div>
+  );
+}
+
+// ── Favicon logo SVG (icon emblem only, viewBox 0 0 43 41) ───────────────────
+
+const FAVICON_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 43 41">
+  <polygon fill="#ec6b1f" points="27.44 11.49 41.97 16.66 39.93 31.17 25.66 33.66 20.43 21.06 27.44 11.49"/>
+  <polygon fill="#462718" points="21.29 4.38 0 12.2 10.07 31.53 24.98 25.21 21.29 4.38"/>
+  <path fill="#f28e1c" d="M16.59,37.9c-.23.06-11.72-23.74-11.72-23.74L38.26,4.48l-.42,23.7-21.26,9.73h.01Z"/>
+  <polygon fill="#f28e1c" points="35.07 3.32 40.3 1.83 39.76 9.63 42.22 0 35.07 3.32"/>
+  <polygon fill="#f28e1c" points="41.35 6.98 40.32 10.78 42.97 9.69 41.35 6.98"/>
+  <polygon fill="#462718" points="14.74 5.34 10.42 7.12 7.45 6.33 14.74 5.34"/>
+  <polygon fill="#f28e1c" points="5.62 6.7 9.02 7.5 5.89 9.14 5.62 6.7"/>
+  <polygon fill="#ec6b1f" points="25.95 34.94 31.42 34.1 27.04 36.84 25.95 34.94"/>
+  <polygon fill="#ec6b1f" points="29.91 36.89 32.77 34.13 32.78 36.02 29.91 36.89"/>
+  <polygon fill="#462718" points="7.46 29.21 9.41 33.18 14.17 31.77 8.63 34.11 7.46 29.21"/>
+  <polyline fill="#ec6b1f" points="16.71 39.13 24.67 36.33 18.81 40.34"/>
+  <polygon fill="#f28e1c" points="25.19 36.43 23.65 38.26 25.02 37.78 25.19 36.43"/>
+  <path fill="#462718" d="M24.44,11.29s-.68-.44-1.31-.3c-.6,1.01-.4,2.83-.4,2.83,0,0,.27-.17.37-.15.15-1.33,1.34-2.37,1.34-2.37h0Z"/>
+  <path fill="#462718" d="M25.22,11.75c-1.02.38-1.85,1.95-1.85,1.95,0,0,.3.05.38.14.84-.95,2.35-.95,2.35-.95,0,0-.3-.82-.87-1.15h-.01Z"/>
+  <path fill="#462718" d="M24.12,14.01s.24.21.27.33c1.14-.36,2.46.48,2.46.48,0,0,.1-.88-.26-1.48-1.06-.24-2.47.67-2.47.67h0Z"/>
+  <path fill="#462718" d="M30.4,29.91c.12-.06-2.23-8.1-3.89-9.69,1.46.17,3.12.13,3.12.13l-.82-4.6.17,3.92s-3.44-.76-4.38-.89c-.2-.17-.45-.6-.58-.84.65-1.17,1.03-2.52.34-3.21-1.22-1.21-2.68-.52-3,1.25-.25,1.37-.12,4.37.77,4.12.31-.09.85-.61,1.36-1.32l.51.65-3.13,3.32-.72-5.36s0,5.7.34,6.61c.57.04,3.64-2.67,3.64-2.67,0,0,1.81,2.52,1.95,4.24-1.49.8-4.41,2.59-4.78,3.16-.34.52,4.9,3.34,5.74,3.87-.59-.54-3.28-3.43-3.28-3.43l3.81-1.59,1.64,2.69s-.55,1.03-1.15,2.39l1.18-.54c.63-1.24,1.13-2.19,1.18-2.21h-.02Z"/>
+  <path fill="#462718" d="M27.02,32.61c.07.06.11.1.11.09,0,0-.04-.04-.11-.09Z"/>
+</svg>`;
+
+/** Renders the logo emblem SVG to a square PNG canvas blob at the given size. */
+function renderLogoToPng(size: number): Promise<Blob> {
+  return new Promise((resolve, reject) => {
+    const svgBlob = new Blob([FAVICON_SVG], { type: 'image/svg+xml;charset=utf-8' });
+    const url = URL.createObjectURL(svgBlob);
+    const img = new window.Image();
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      canvas.width  = size;
+      canvas.height = size;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) { URL.revokeObjectURL(url); reject(new Error('no ctx')); return; }
+      ctx.drawImage(img, 0, 0, size, size);
+      URL.revokeObjectURL(url);
+      canvas.toBlob(b => b ? resolve(b) : reject(new Error('toBlob failed')), 'image/png');
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('img load failed')); };
+    img.src = url;
+  });
+}
+
+// ── Favicon section ───────────────────────────────────────────────────────────
+
+function FaviconCard() {
+  const { error } = useToast();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [favicon, setFavicon]   = useState<string | null>(null);
+  const [loading, setLoading]   = useState(true);
+  const [preview, setPreview]   = useState<string | null>(null);
+  const [file, setFile]         = useState<File | null>(null);
+  const [saving, setSaving]     = useState(false);
+  const [generating, setGenerating] = useState(false);
+
+  useEffect(() => {
+    siteApi.getFavicon()
+      .then(r => setFavicon(r.data.favicon_url))
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, []);
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const f = e.target.files?.[0];
+    if (!f) return;
+    setFile(f);
+    setPreview(URL.createObjectURL(f));
+  };
+
+  const handleSave = async (blob?: Blob) => {
+    const target = blob ?? file;
+    if (!target) return;
+    setSaving(true);
+    try {
+      const fd = new FormData();
+      fd.append('favicon', target, 'favicon.png');
+      const res = await siteApi.updateFavicon(fd);
+      setFavicon(res.data.favicon_url);
+      setPreview(null);
+      setFile(null);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+      swal.success('Favicon updated!');
+    } catch { error('Failed to update favicon.'); }
+    finally { setSaving(false); }
+  };
+
+  /** Generate 64×64 PNG from the logo emblem, preview it in-card */
+  const handleGenerate = async () => {
+    setGenerating(true);
+    try {
+      const blob = await renderLogoToPng(64);
+      const url  = URL.createObjectURL(blob);
+      setPreview(url);
+      setFile(new File([blob], 'favicon.png', { type: 'image/png' }));
+    } catch { error('Failed to generate favicon from logo.'); }
+    finally { setGenerating(false); }
+  };
+
+  /** Download 256×256 PNG to disk */
+  const handleDownload = async () => {
+    setGenerating(true);
+    try {
+      const blob = await renderLogoToPng(256);
+      const url  = URL.createObjectURL(blob);
+      const a    = document.createElement('a');
+      a.href     = url;
+      a.download = 'afristudio-favicon.png';
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch { error('Failed to download favicon.'); }
+    finally { setGenerating(false); }
+  };
+
+  const discard = () => {
+    setFile(null);
+    setPreview(null);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
+  const src = preview ?? favicon ?? null;
+
+  if (loading) return <SectionSpinner />;
+
+  return (
+    <div className="bg-white rounded-2xl border border-earth-100 shadow-sm overflow-hidden">
+      <SectionHeader
+        icon={Globe}
+        title="Site Favicon"
+        action={
+          <div className="flex flex-wrap gap-2">
+            {/* Generate from logo */}
+            {!file && (
+              <button
+                onClick={handleGenerate}
+                disabled={generating}
+                className="flex items-center gap-1.5 text-xs font-medium text-violet-600 hover:text-violet-700 bg-violet-50 hover:bg-violet-100 disabled:opacity-50 px-3 py-1.5 rounded-lg transition-colors"
+              >
+                {generating ? <Spinner size="sm" /> : <Wand2 size={12} />}
+                {generating ? 'Generating…' : 'From Logo'}
+              </button>
+            )}
+
+            {/* Download high-res */}
+            <button
+              onClick={handleDownload}
+              disabled={generating}
+              className="flex items-center gap-1.5 text-xs font-medium text-earth-500 hover:text-earth-700 border border-earth-200 hover:border-earth-300 hover:bg-earth-50 disabled:opacity-50 px-3 py-1.5 rounded-lg transition-colors"
+            >
+              {generating ? <Spinner size="sm" /> : <Download size={12} />}
+              Download
+            </button>
+
+            {/* Upload custom */}
+            {!file && (
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                className="flex items-center gap-1.5 text-xs font-medium text-primary-600 hover:text-primary-700 bg-primary-50 hover:bg-primary-100 px-3 py-1.5 rounded-lg transition-colors"
+              >
+                <Upload size={12} /> Upload
+              </button>
+            )}
+
+            {/* Discard / Save after selection */}
+            {file && (
+              <>
+                <button onClick={discard} className="flex items-center gap-1 text-xs border border-earth-200 text-earth-500 hover:bg-earth-50 px-2.5 py-1.5 rounded-lg transition-colors">
+                  <X size={12} /> Discard
+                </button>
+                <button
+                  onClick={() => handleSave()}
+                  disabled={saving}
+                  className="flex items-center gap-1.5 text-xs font-semibold text-white bg-primary-600 hover:bg-primary-700 disabled:opacity-50 px-3 py-1.5 rounded-lg transition-colors"
+                >
+                  {saving ? <Spinner size="sm" /> : <Save size={12} />}
+                  {saving ? 'Saving…' : 'Save Favicon'}
+                </button>
+              </>
+            )}
+          </div>
+        }
+      />
+      <input ref={fileInputRef} type="file" accept="image/*,.ico" className="hidden" onChange={handleFileChange} />
+
+      <div className="p-5">
+        <div className="flex items-end gap-6 flex-wrap">
+
+          {/* Size previews on checkered background */}
+          {(['16', '32', '64'] as const).map(sz => {
+            const n = Number(sz);
+            const box = n === 16 ? 'w-9 h-9' : n === 32 ? 'w-12 h-12' : 'w-16 h-16';
+            const img = n === 16 ? 'w-4 h-4' : n === 32 ? 'w-8 h-8' : 'w-14 h-14';
+            return (
+              <div key={sz} className="flex flex-col items-center gap-1.5">
+                <div
+                  className={`${box} rounded-lg border border-earth-200 flex items-center justify-center overflow-hidden`}
+                  style={{ backgroundImage: 'repeating-conic-gradient(#e5e7eb 0% 25%, white 0% 50%)', backgroundSize: '8px 8px' }}
+                >
+                  {src
+                    ? <img src={src} alt={`${sz}px`} className={`${img} object-contain`} />
+                    : <Globe size={n === 16 ? 13 : n === 32 ? 18 : 26} className="text-earth-300" />}
+                </div>
+                <span className="text-[10px] text-earth-400">{sz} px</span>
+              </div>
+            );
+          })}
+
+          {/* Browser tab mockup */}
+          <div className="flex flex-col items-center gap-1.5">
+            <div className="rounded-t-lg border border-b-0 border-earth-300 bg-white px-3 py-1.5 flex items-center gap-1.5 min-w-[130px] shadow-sm">
+              {src
+                ? <img src={src} alt="tab" className="w-4 h-4 object-contain shrink-0" />
+                : <Globe size={14} className="text-earth-400 shrink-0" />}
+              <span className="text-[11px] text-earth-700 font-medium truncate flex-1">AfriStudio</span>
+              <X size={10} className="text-earth-400 shrink-0" />
+            </div>
+            <div className="w-full h-px bg-earth-200" />
+            <span className="text-[10px] text-earth-400">Tab preview</span>
+          </div>
+
+          {/* Status info */}
+          <div className="ml-auto text-right shrink-0 hidden sm:block">
+            <div className={`inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full ${
+              favicon ? 'bg-emerald-100 text-emerald-700' : 'bg-earth-100 text-earth-500'
+            }`}>
+              <span className={`w-1.5 h-1.5 rounded-full ${favicon ? 'bg-emerald-500' : 'bg-earth-400'}`} />
+              {favicon ? 'Favicon active' : 'No favicon set'}
+            </div>
+            <p className="text-[11px] text-earth-400 mt-1.5">PNG or ICO · 64 × 64 px recommended</p>
+            {preview && <p className="text-[11px] text-amber-500 font-semibold mt-1">● Unsaved preview</p>}
+          </div>
+        </div>
+
+        {/* Generated preview notice */}
+        {file && preview && (
+          <div className="mt-4 flex items-center gap-2 bg-violet-50 border border-violet-200 rounded-xl px-4 py-2.5">
+            <Wand2 size={13} className="text-violet-500 shrink-0" />
+            <p className="text-xs text-violet-700 font-medium">
+              Favicon generated from the AfriStudio logo — click <strong>Save Favicon</strong> to apply, or <strong>Download</strong> to save the file.
+            </p>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
@@ -637,8 +884,11 @@ export function SiteConfigPage() {
         </div>
       </div>
 
-      {/* Hero Image — full width */}
-      <HeroImageCard />
+      {/* Hero Image + Favicon — side by side */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <HeroImageCard />
+        <FaviconCard />
+      </div>
 
       {/* Two-column grid */}
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">

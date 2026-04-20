@@ -189,6 +189,11 @@ export const siteApi = {
   updateHero: (data: FormData) =>
     api.put<LandingHero>('/api/site/hero/', data, { headers: { 'Content-Type': undefined } }),
 
+  // Site favicon
+  getFavicon: () => api.get<LandingHero>('/api/site/favicon/'),
+  updateFavicon: (data: FormData) =>
+    api.put<LandingHero>('/api/site/favicon/', data, { headers: { 'Content-Type': undefined } }),
+
   // Contact info
   getContactInfo: () => api.get<ContactInfo>('/api/site/contact-info/'),
   updateContactInfo: (data: Partial<ContactInfo>) =>

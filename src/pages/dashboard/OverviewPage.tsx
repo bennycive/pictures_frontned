@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
-  Image, Tag, Gavel, Package, Wallet, TrendingUp, Clock, ArrowRight,
+  Image, Tag, Gavel, Package, Wallet, ArrowRight,
   ShoppingBag, Users, Bell, Mail, Shield, CheckCircle2, XCircle,
-  Activity, LayoutDashboard, Zap,
+  Activity,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import {
@@ -244,18 +244,6 @@ export function OverviewPage() {
     strip: string; iconCls: string; sub?: string; to: string;
   }[];
 
-  /* ── quick links ────────── */
-  const quick = [
-    { label: 'Auctions',  icon: Gavel,      to: '/auctions',                cls: 'from-primary-600 to-primary-400' },
-    { label: 'Artworks',  icon: Image,       to: '/artworks',                cls: 'from-blue-500 to-cyan-400' },
-    { label: 'Orders',    icon: ShoppingBag, to: '/dashboard/orders',        cls: 'from-emerald-500 to-teal-400' },
-    { label: 'Wallet',    icon: Wallet,      to: '/dashboard/wallet',        cls: 'from-violet-500 to-purple-400' },
-    { label: 'Activity',  icon: TrendingUp,  to: '/dashboard/activity-logs', cls: 'from-amber-500 to-orange-400' },
-    ...(isPriv
-      ? [{ label: 'Security', icon: Shield, to: '/dashboard/security', cls: 'from-red-500 to-rose-400' }]
-      : [{ label: 'History',  icon: Clock,  to: '/dashboard/orders',   cls: 'from-sky-500 to-indigo-400' }]
-    ),
-  ];
 
   /* ── activity event color ────────── */
   const eventColor = (event?: string | null) => {
@@ -332,29 +320,6 @@ export function OverviewPage() {
             </Link>
           </div>
         )}
-      </div>
-
-      {/* ════════════════════════════════════════════════════
-          QUICK ACCESS  — above stats
-      ════════════════════════════════════════════════════ */}
-      <div className="bg-white dark:bg-earth-800 rounded-2xl border border-earth-100 dark:border-earth-700 shadow-sm overflow-hidden">
-        <div className="flex items-center gap-2.5 px-5 py-3.5 border-b border-earth-100 dark:border-earth-700 bg-earth-50/60 dark:bg-earth-900/30">
-          <div className="w-7 h-7 rounded-lg bg-primary-100 dark:bg-primary-900/40 flex items-center justify-center">
-            <Zap size={13} className="text-primary-600 dark:text-primary-400" />
-          </div>
-          <span className="text-sm font-semibold text-earth-900 dark:text-earth-100">Quick Access</span>
-        </div>
-        <div className="p-3 flex flex-wrap gap-2">
-          {quick.map(q => (
-            <Link key={q.label} to={q.to}
-              className="group flex items-center gap-2 px-3.5 py-2 rounded-xl bg-earth-50 dark:bg-earth-700/60 hover:bg-earth-100 dark:hover:bg-earth-700 border border-earth-100 dark:border-earth-700 transition-all">
-              <div className={`w-6 h-6 rounded-lg bg-gradient-to-br ${q.cls} flex items-center justify-center shrink-0`}>
-                <q.icon size={12} className="text-white" />
-              </div>
-              <span className="text-sm font-medium text-earth-700 dark:text-earth-300 group-hover:text-earth-900 dark:group-hover:text-earth-100 transition-colors">{q.label}</span>
-            </Link>
-          ))}
-        </div>
       </div>
 
       {/* ════════════════════════════════════════════════════
