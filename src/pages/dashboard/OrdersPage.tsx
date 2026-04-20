@@ -65,7 +65,7 @@ export function OrdersPage() {
     setSearch('');
   };
 
-  const handleUpdateStatus = async (e: React.FormEvent) => {
+  const handleUpdateStatus = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!selected) return;
     setUpdating(true);
@@ -255,7 +255,7 @@ export function OrdersPage() {
       )}
 
       {/* Order detail modal */}
-      <Modal open={!!selected && !statusModal} onClose={() => setSelected(null)} title={`Order #${selected?.uuid.slice(0, 8)}`} size="lg">
+      <Modal open={!!selected && !statusModal} onClose={() => setSelected(null)} title={`Order #${selected?.uuid.slice(0, 8)}`} size="lg" branded>
         {selected && (
           <div className="space-y-5">
             <div className="flex items-center justify-between">

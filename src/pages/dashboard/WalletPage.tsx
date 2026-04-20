@@ -160,7 +160,7 @@ function MyWalletTab() {
         )}
       </div>
 
-      <Modal open={depositOpen} onClose={() => setDepositOpen(false)} title="Deposit Funds" size="sm">
+      <Modal open={depositOpen} onClose={() => setDepositOpen(false)} title="Deposit Funds" size="sm" branded>
         <form onSubmit={handleDeposit} className="space-y-4">
           <div>
             <label className="block text-sm font-medium text-earth-700 mb-1">Amount (USD)</label>
@@ -292,7 +292,7 @@ function AllWalletsTab() {
       )}
 
       {/* Credit modal */}
-      <Modal open={!!creditTarget} onClose={() => setCreditTarget(null)} title="Credit Wallet" size="sm">
+      <Modal open={!!creditTarget} onClose={() => setCreditTarget(null)} title="Credit Wallet" size="sm" branded>
         {creditTarget && (
           <form onSubmit={handleCredit} className="space-y-4">
             <div className="bg-earth-50 rounded-xl p-4 flex items-center gap-3">
