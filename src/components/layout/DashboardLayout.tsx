@@ -5,7 +5,7 @@ import {
   LayoutDashboard, Image, Tag, DollarSign, Gavel, ShoppingBag,
   Package, User, Wallet, ClipboardList, LogOut, Menu, ChevronRight,
   Shield, Users, Settings2, Inbox, BarChart2, Activity, Bell,
-  Zap, X,
+  Zap, X, SlidersHorizontal,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { profileApi, siteApi, cartApi } from '../../api';
@@ -52,7 +52,7 @@ function QuickFAB() {
   const [dragging, setDragging] = useState(false);
 
   const dragRef  = useRef<{ sx: number; sy: number; px: number; py: number; moved: boolean } | null>(null);
-  const leaveTimer = useRef<ReturnType<typeof setTimeout>>();
+  const leaveTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const containerRef = useRef<HTMLDivElement>(null);
 
   /* Escape to close */
@@ -64,7 +64,8 @@ function QuickFAB() {
 
   /* ── drag: attach to the main button ── */
   const onPointerDown = (e: React.PointerEvent<HTMLButtonElement>) => {
-    if (e.button !== 0) return;
+    if (e.button !== 0 && e.pointerType === 'mouse') return;
+    e.preventDefault();
     e.currentTarget.setPointerCapture(e.pointerId);
     dragRef.current = { sx: e.clientX, sy: e.clientY, px: pos.x, py: pos.y, moved: false };
     setDragging(true);
@@ -122,8 +123,7 @@ function QuickFAB() {
         const closeDelay = (total - 1 - i) * 35;
 
         /* Label placement: always point toward screen center */
-        const labelRight = pos.x > window.innerWidth  / 2; // button on right → label on left
-        const labelBelow = pos.y > window.innerHeight / 2; // button on bottom → label on top
+        const labelRight = pos.x > window.innerWidth / 2; // button on right → label on left
 
         return (
           <div
@@ -208,7 +208,7 @@ function QuickFAB() {
           ${open && !dragging ? 'ring-primary-400/70' : ''}
         `}
         title={open ? 'Close' : 'Quick Access'}
-        style={{ zIndex: 2 }}
+        style={{ zIndex: 2, touchAction: 'none' }}
       >
         <Zap size={22} className={`text-white absolute transition-all duration-300 ${open ? 'opacity-0 scale-0 rotate-90' : 'opacity-100 scale-100 rotate-0'}`} />
         <X   size={22} className={`text-white absolute transition-all duration-300 ${open ? 'opacity-100 scale-100 rotate-0' : 'opacity-0 scale-0 -rotate-90'}`} />
@@ -251,19 +251,20 @@ const navItems: NavItem[] = [
   { label: 'Artworks',       icon: Image,           to: '/dashboard/artworks',      permission: 'artworks.view_artwork' },
   { label: 'Categories',     icon: Tag,             to: '/dashboard/categories',    permission: 'artworks.view_category' },
   { label: 'Currencies',     icon: DollarSign,      to: '/dashboard/currencies',    permission: 'currencies.view_currency' },
-  { label: 'Auctions',       icon: Gavel,           to: '/dashboard/auctions' },
-  { label: 'Orders',         icon: Package,         to: '/dashboard/orders' },
+  { label: 'Auctions',       icon: Gavel,           to: '/dashboard/auctions',      permission: 'auctions.view_auction' },
+  { label: 'Auction Config', icon: SlidersHorizontal, to: '/dashboard/auction-config', permission: 'auctions.change_auctionconfig' },
+  { label: 'Orders',         icon: Package,         to: '/dashboard/orders',        permission: 'orders.view_order' },
   { label: 'Cart',           icon: ShoppingBag,     to: '/dashboard/cart' },
-  { label: 'Wallet',         icon: Wallet,          to: '/dashboard/wallet' },
+  { label: 'Wallet',         icon: Wallet,          to: '/dashboard/wallet',        permission: 'wallet.view_wallet' },
   { label: 'Profile',        icon: User,            to: '/dashboard/profile' },
   { label: 'Activity Logs',  icon: ClipboardList,   to: '/dashboard/activity-logs', permission: 'activity_logs.view_activitylog' },
   { label: 'Roles',          icon: Shield,          to: '/dashboard/roles',         adminOnly: true },
-  { label: 'Users',          icon: Users,           to: '/dashboard/users',         adminOnly: true },
-  { label: 'Messages',       icon: Inbox,           to: '/dashboard/messages',      adminOnly: true },
+  { label: 'Users',          icon: Users,           to: '/dashboard/users',         permission: 'accounts.view_user' },
+  { label: 'Messages',       icon: Inbox,           to: '/dashboard/messages',      permission: 'site_config.view_contactmessage' },
   { label: 'Site Config',    icon: Settings2,       to: '/dashboard/site-config',   adminOnly: true },
-  { label: 'Reports',        icon: BarChart2,       to: '/dashboard/reports',       adminOnly: true },
-  { label: 'Performance',    icon: Activity,        to: '/dashboard/performance',   adminOnly: true },
-  { label: 'Notifications',  icon: Bell,            to: '/dashboard/notifications', adminOnly: true },
+  { label: 'Reports',        icon: BarChart2,       to: '/dashboard/reports',       permission: 'accounts.view_analytics' },
+  { label: 'Performance',    icon: Activity,        to: '/dashboard/performance',   permission: 'security.view_requestlog' },
+  { label: 'Notifications',  icon: Bell,            to: '/dashboard/notifications', permission: 'notifications.view_notificationlog' },
 ];
 
 export function DashboardLayout({ children }: { children: React.ReactNode }) {

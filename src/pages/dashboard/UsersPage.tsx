@@ -7,6 +7,7 @@ import {
 import { adminUsersApi, rolesApi } from '../../api';
 import { swal } from '../../lib/swal';
 import type { AdminUser, Role } from '../../api/types';
+import { useAuth } from '../../context/AuthContext';
 import { Spinner, SectionSpinner } from '../../components/ui/Spinner';
 import { useToast } from '../../components/ui/Toast';
 
@@ -18,6 +19,9 @@ interface EditFields { name: string; email: string; phone: string }
 
 export function UsersPage() {
   const { error } = useToast();
+  const { hasPermission } = useAuth();
+  const canEdit        = hasPermission('accounts.change_user');
+  const canManageRoles = hasPermission('accounts.manage_users');
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [roles, setRoles] = useState<Role[]>([]);
   const [loading, setLoading] = useState(true);
@@ -249,7 +253,7 @@ export function UsersPage() {
                             <div className="bg-white border border-earth-100 rounded-xl p-4">
                               <div className="flex items-center justify-between mb-3">
                                 <p className="text-xs font-semibold text-earth-600 uppercase tracking-wide">Account Details</p>
-                                {!isEditing ? (
+                                {canEdit && !isEditing ? (
                                   <button
                                     onClick={e => { e.stopPropagation(); startEdit(user); }}
                                     className="flex items-center gap-1.5 text-xs text-primary-600 hover:text-primary-700 font-medium"
@@ -348,7 +352,7 @@ export function UsersPage() {
                             {/* ── Roles & permissions ── */}
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                               {/* Assign role */}
-                              <div>
+                              {canManageRoles && <div>
                                 <p className="text-xs font-semibold text-earth-600 mb-2">Assign Role</p>
                                 <div className="flex gap-2">
                                   <select
@@ -370,7 +374,7 @@ export function UsersPage() {
                                     {assigningRole === user.uuid ? <Spinner size="sm" /> : <><ShieldPlus size={13} /> Assign</>}
                                   </button>
                                 </div>
-                              </div>
+                              </div>}
 
                               {/* Current roles */}
                               <div>
@@ -380,16 +384,20 @@ export function UsersPage() {
                                 ) : (
                                   <div className="flex flex-wrap gap-1.5">
                                     {user.roles.map(roleName => (
-                                      <button
-                                        key={roleName}
-                                        onClick={e => { e.stopPropagation(); handleRemoveRole(user.uuid, roleName); }}
-                                        disabled={assigningRole === user.uuid + roleName}
-                                        className="flex items-center gap-1 text-xs bg-white border border-earth-200 hover:border-red-300 hover:text-red-500 text-earth-700 px-2 py-1 rounded-full transition-colors disabled:opacity-50"
-                                        title={`Remove ${roleName}`}
-                                      >
-                                        {assigningRole === user.uuid + roleName ? <Spinner size="sm" /> : <ShieldMinus size={11} />}
-                                        {roleName}
-                                      </button>
+                                      canManageRoles ? (
+                                        <button
+                                          key={roleName}
+                                          onClick={e => { e.stopPropagation(); handleRemoveRole(user.uuid, roleName); }}
+                                          disabled={assigningRole === user.uuid + roleName}
+                                          className="flex items-center gap-1 text-xs bg-white border border-earth-200 hover:border-red-300 hover:text-red-500 text-earth-700 px-2 py-1 rounded-full transition-colors disabled:opacity-50"
+                                          title={`Remove ${roleName}`}
+                                        >
+                                          {assigningRole === user.uuid + roleName ? <Spinner size="sm" /> : <ShieldMinus size={11} />}
+                                          {roleName}
+                                        </button>
+                                      ) : (
+                                        <span key={roleName} className="text-xs bg-primary-50 text-primary-700 px-2 py-0.5 rounded-full">{roleName}</span>
+                                      )
                                     ))}
                                   </div>
                                 )}
@@ -411,51 +419,59 @@ export function UsersPage() {
                             </div>
 
                             {/* ── Account flags ── */}
-                            <div className="flex flex-wrap gap-3 pt-3 border-t border-earth-100">
-                              {/* Verify / Unverify */}
-                              <button
-                                onClick={e => { e.stopPropagation(); handleVerify(user.uuid, !!user.verified_at, user.name); }}
-                                disabled={verifyingUuid === user.uuid}
-                                className={`flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full border transition-colors disabled:opacity-50 ${
-                                  user.verified_at
-                                    ? 'border-earth-200 text-earth-500 hover:bg-earth-100'
-                                    : 'border-green-200 text-green-600 hover:bg-green-50'
-                                }`}
-                              >
-                                {verifyingUuid === user.uuid
-                                  ? <Spinner size="sm" />
-                                  : user.verified_at
-                                    ? <><BadgeX size={13} /> Revoke Verification</>
-                                    : <><BadgeCheck size={13} /> Verify Account</>}
-                              </button>
+                            {(canManageRoles || canEdit) && (
+                              <div className="flex flex-wrap gap-3 pt-3 border-t border-earth-100">
+                                {/* Verify / Unverify */}
+                                {canManageRoles && (
+                                  <button
+                                    onClick={e => { e.stopPropagation(); handleVerify(user.uuid, !!user.verified_at, user.name); }}
+                                    disabled={verifyingUuid === user.uuid}
+                                    className={`flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full border transition-colors disabled:opacity-50 ${
+                                      user.verified_at
+                                        ? 'border-earth-200 text-earth-500 hover:bg-earth-100'
+                                        : 'border-green-200 text-green-600 hover:bg-green-50'
+                                    }`}
+                                  >
+                                    {verifyingUuid === user.uuid
+                                      ? <Spinner size="sm" />
+                                      : user.verified_at
+                                        ? <><BadgeX size={13} /> Revoke Verification</>
+                                        : <><BadgeCheck size={13} /> Verify Account</>}
+                                  </button>
+                                )}
 
-                              {/* Activate / Deactivate */}
-                              <button
-                                onClick={e => { e.stopPropagation(); handleToggle(user.uuid, 'is_active', !user.is_active, user.name); }}
-                                disabled={togglingUuid === user.uuid + 'is_active'}
-                                className={`flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full border transition-colors disabled:opacity-50 ${
-                                  user.is_active
-                                    ? 'border-red-200 text-red-500 hover:bg-red-50'
-                                    : 'border-green-200 text-green-600 hover:bg-green-50'
-                                }`}
-                              >
-                                {togglingUuid === user.uuid + 'is_active' ? <Spinner size="sm" /> : user.is_active ? <><UserX size={13} /> Deactivate</> : <><UserCheck size={13} /> Activate</>}
-                              </button>
+                                {/* Activate / Deactivate */}
+                                {canEdit && (
+                                  <button
+                                    onClick={e => { e.stopPropagation(); handleToggle(user.uuid, 'is_active', !user.is_active, user.name); }}
+                                    disabled={togglingUuid === user.uuid + 'is_active'}
+                                    className={`flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full border transition-colors disabled:opacity-50 ${
+                                      user.is_active
+                                        ? 'border-red-200 text-red-500 hover:bg-red-50'
+                                        : 'border-green-200 text-green-600 hover:bg-green-50'
+                                    }`}
+                                  >
+                                    {togglingUuid === user.uuid + 'is_active' ? <Spinner size="sm" /> : user.is_active ? <><UserX size={13} /> Deactivate</> : <><UserCheck size={13} /> Activate</>}
+                                  </button>
+                                )}
 
-                              {/* Staff toggle */}
-                              <button
-                                onClick={e => { e.stopPropagation(); handleToggle(user.uuid, 'is_staff', !user.is_staff, user.name); }}
-                                disabled={togglingUuid === user.uuid + 'is_staff'}
-                                className={`flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full border transition-colors disabled:opacity-50 ${
-                                  user.is_staff
-                                    ? 'border-violet-200 text-violet-600 hover:bg-violet-50'
-                                    : 'border-earth-200 text-earth-600 hover:bg-earth-100'
-                                }`}
-                              >
-                                {togglingUuid === user.uuid + 'is_staff' ? <Spinner size="sm" /> : null}
-                                {user.is_staff ? 'Remove Staff' : 'Make Staff'}
-                              </button>
-                            </div>
+                                {/* Staff toggle */}
+                                {canEdit && (
+                                  <button
+                                    onClick={e => { e.stopPropagation(); handleToggle(user.uuid, 'is_staff', !user.is_staff, user.name); }}
+                                    disabled={togglingUuid === user.uuid + 'is_staff'}
+                                    className={`flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full border transition-colors disabled:opacity-50 ${
+                                      user.is_staff
+                                        ? 'border-violet-200 text-violet-600 hover:bg-violet-50'
+                                        : 'border-earth-200 text-earth-600 hover:bg-earth-100'
+                                    }`}
+                                  >
+                                    {togglingUuid === user.uuid + 'is_staff' ? <Spinner size="sm" /> : null}
+                                    {user.is_staff ? 'Remove Staff' : 'Make Staff'}
+                                  </button>
+                                )}
+                              </div>
+                            )}
                           </div>
                         </td>
                       </tr>

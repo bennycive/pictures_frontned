@@ -11,6 +11,7 @@ import { securityApi } from '../../api';
 import type { SecurityStats, BlockedIP, BlockedDevice, RateLimitViolation, SecurityConfig, ErrorRequestLog } from '../../api/types';
 import { useToast } from '../../components/ui/Toast';
 import { SectionSpinner } from '../../components/ui/Spinner';
+import { useAuth } from '../../context/AuthContext';
 
 // ── helpers ───────────────────────────────────────────────────────────────────
 
@@ -245,8 +246,9 @@ function ConfigPanel({ onUpdated }: { onUpdated: () => void }) {
 
 // ── Violations Table ──────────────────────────────────────────────────────────
 
-function ViolationsTable({ onBlock, refreshTrigger, onMutate }: {
+function ViolationsTable({ onBlock, refreshTrigger, onMutate, canDelete, canBlock }: {
   onBlock: (ip: string) => void; refreshTrigger: number; onMutate: () => void;
+  canDelete: boolean; canBlock: boolean;
 }) {
   const { success, error } = useToast();
   const [violations, setViolations] = useState<RateLimitViolation[]>([]);
@@ -316,7 +318,7 @@ function ViolationsTable({ onBlock, refreshTrigger, onMutate }: {
           <span className="bg-amber-100 text-amber-700 text-xs font-bold px-2 py-0.5 rounded-full">{violations.length}</span>
         </div>
         <div className="flex items-center gap-2">
-          {selected.size > 0 && (
+          {selected.size > 0 && canDelete && (
             <button
               onClick={bulkDelete}
               disabled={deleting}
@@ -372,15 +374,19 @@ function ViolationsTable({ onBlock, refreshTrigger, onMutate }: {
                   <td className="px-3 py-3 text-xs text-earth-500">{new Date(v.last_violation).toLocaleString()}</td>
                   <td className="px-3 py-3 text-right">
                     <div className="flex items-center justify-end gap-1">
-                      <button onClick={() => blockFromViolation(v)} disabled={blockingId === v.id}
-                        className="flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-md bg-red-50 text-red-600 hover:bg-red-100 disabled:opacity-50 transition-colors"
-                        title="Block this device only">
-                        <Ban size={11} />{blockingId === v.id ? '…' : 'Block'}
-                      </button>
-                      <button onClick={() => clear(v.id)}
-                        className="p-1.5 rounded-md hover:bg-earth-100 text-earth-400 hover:text-earth-700 transition-colors">
-                        <Trash2 size={13} />
-                      </button>
+                      {canBlock && (
+                        <button onClick={() => blockFromViolation(v)} disabled={blockingId === v.id}
+                          className="flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-md bg-red-50 text-red-600 hover:bg-red-100 disabled:opacity-50 transition-colors"
+                          title="Block this device only">
+                          <Ban size={11} />{blockingId === v.id ? '…' : 'Block'}
+                        </button>
+                      )}
+                      {canDelete && (
+                        <button onClick={() => clear(v.id)}
+                          className="p-1.5 rounded-md hover:bg-earth-100 text-earth-400 hover:text-earth-700 transition-colors">
+                          <Trash2 size={13} />
+                        </button>
+                      )}
                     </div>
                   </td>
                 </tr>
@@ -395,8 +401,9 @@ function ViolationsTable({ onBlock, refreshTrigger, onMutate }: {
 
 // ── Blocked IPs Table ─────────────────────────────────────────────────────────
 
-function BlockedIPsTable({ refreshTrigger, onAddClick, onMutate }: {
+function BlockedIPsTable({ refreshTrigger, onAddClick, onMutate, canAdd, canDelete }: {
   refreshTrigger: number; onAddClick: () => void; onMutate: () => void;
+  canAdd: boolean; canDelete: boolean;
 }) {
   const { success, error } = useToast();
   const [blocked, setBlocked]   = useState<BlockedIP[]>([]);
@@ -454,7 +461,7 @@ function BlockedIPsTable({ refreshTrigger, onAddClick, onMutate }: {
           )}
         </div>
         <div className="flex items-center gap-2">
-          {selected.size > 0 && (
+          {selected.size > 0 && canDelete && (
             <button
               onClick={bulkDelete}
               disabled={deleting}
@@ -466,12 +473,14 @@ function BlockedIPsTable({ refreshTrigger, onAddClick, onMutate }: {
           )}
           <input className="input w-44 text-sm" placeholder="Filter by IP…" value={search}
             onChange={e => setSearch(e.target.value)} />
-          <button
-            onClick={onAddClick}
-            className="text-xs flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-red-50 text-red-600 hover:bg-red-100 font-medium transition-colors shrink-0"
-          >
-            <Plus size={12} /> Add
-          </button>
+          {canAdd && (
+            <button
+              onClick={onAddClick}
+              className="text-xs flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-red-50 text-red-600 hover:bg-red-100 font-medium transition-colors shrink-0"
+            >
+              <Plus size={12} /> Add
+            </button>
+          )}
         </div>
       </div>
 
@@ -517,13 +526,15 @@ function BlockedIPsTable({ refreshTrigger, onAddClick, onMutate }: {
                     {new Date(b.created_at).toLocaleString()}
                   </td>
                   <td className="px-4 py-3 text-right">
-                    <button
-                      onClick={() => unblock(b.id, b.ip)}
-                      className="flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-md bg-earth-50 text-earth-600 hover:bg-earth-100 transition-colors ml-auto"
-                      title="Unblock"
-                    >
-                      <Trash2 size={11} /> Unblock
-                    </button>
+                    {canDelete && (
+                      <button
+                        onClick={() => unblock(b.id, b.ip)}
+                        className="flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-md bg-earth-50 text-earth-600 hover:bg-earth-100 transition-colors ml-auto"
+                        title="Unblock"
+                      >
+                        <Trash2 size={11} /> Unblock
+                      </button>
+                    )}
                   </td>
                 </tr>
               ))}
@@ -537,8 +548,8 @@ function BlockedIPsTable({ refreshTrigger, onAddClick, onMutate }: {
 
 // ── Blocked Devices Table ─────────────────────────────────────────────────────
 
-function BlockedDevicesTable({ refreshTrigger, onMutate }: {
-  refreshTrigger: number; onMutate: () => void;
+function BlockedDevicesTable({ refreshTrigger, onMutate, canDelete }: {
+  refreshTrigger: number; onMutate: () => void; canDelete: boolean;
 }) {
   const { success, error } = useToast();
   const [devices, setDevices]   = useState<BlockedDevice[]>([]);
@@ -597,7 +608,7 @@ function BlockedDevicesTable({ refreshTrigger, onMutate }: {
           <span className="text-xs text-earth-400 ml-1 hidden sm:inline">— device-level blocks, other devices on the same IP are unaffected</span>
         </div>
         <div className="flex items-center gap-2">
-          {selected.size > 0 && (
+          {selected.size > 0 && canDelete && (
             <button
               onClick={bulkDelete}
               disabled={deleting}
@@ -662,12 +673,14 @@ function BlockedDevicesTable({ refreshTrigger, onMutate }: {
                     </span>
                   </td>
                   <td className="px-4 py-3 text-right">
-                    <button
-                      onClick={() => unblock(d.id)}
-                      className="flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-md bg-earth-50 text-earth-600 hover:bg-earth-100 transition-colors ml-auto"
-                    >
-                      <Trash2 size={11} /> Unblock
-                    </button>
+                    {canDelete && (
+                      <button
+                        onClick={() => unblock(d.id)}
+                        className="flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-md bg-earth-50 text-earth-600 hover:bg-earth-100 transition-colors ml-auto"
+                      >
+                        <Trash2 size={11} /> Unblock
+                      </button>
+                    )}
                   </td>
                 </tr>
               ))}
@@ -835,6 +848,12 @@ function ErrorRequestsTable({ refreshTrigger }: { refreshTrigger: number }) {
 
 export function PerformancePage() {
   const { error } = useToast();
+  const { hasPermission } = useAuth();
+  const canBlockIP        = hasPermission('security.add_blockedip');
+  const canUnblockIP      = hasPermission('security.delete_blockedip');
+  const canBlockDevice    = hasPermission('security.add_blockeddevice');
+  const canUnblockDevice  = hasPermission('security.delete_blockeddevice');
+  const canDeleteViolation = hasPermission('security.delete_ratelimitviolation');
   const [stats, setStats]           = useState<SecurityStats | null>(null);
   const [loading, setLoading]       = useState(true);
   const [blockModal, setBlockModal] = useState<{ open: boolean; prefillIP: string }>({ open: false, prefillIP: '' });
@@ -874,12 +893,14 @@ export function PerformancePage() {
           <p className="text-sm text-earth-500 mt-0.5">Request monitoring, IP control and rate-limit management</p>
         </div>
         <div className="flex items-center gap-2">
-          <button
-            onClick={() => openBlockModal()}
-            className="flex items-center gap-1.5 px-3 py-2 text-sm bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
-          >
-            <Plus size={14} /> Block IP
-          </button>
+          {canBlockIP && (
+            <button
+              onClick={() => openBlockModal()}
+              className="flex items-center gap-1.5 px-3 py-2 text-sm bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+            >
+              <Plus size={14} /> Block IP
+            </button>
+          )}
           <button
             onClick={onMutate}
             className="flex items-center gap-1.5 px-3 py-2 text-sm bg-white border border-earth-200 rounded-lg hover:bg-earth-50 transition-colors text-earth-600"
@@ -968,7 +989,7 @@ export function PerformancePage() {
                   <div className="flex items-center gap-3 shrink-0 w-36 justify-end">
                     <span className="text-xs font-bold text-earth-800 tabular-nums">{row.count.toLocaleString()}</span>
                     <span className="text-xs text-earth-400">{row.avg_ms ? `${Math.round(row.avg_ms)}ms` : '—'}</span>
-                    {!row.is_blocked && (
+                    {!row.is_blocked && canBlockIP && (
                       <button
                         onClick={() => openBlockModal(row.ip)}
                         className="opacity-0 group-hover:opacity-100 transition-opacity text-xs px-1.5 py-0.5 rounded bg-red-50 text-red-600 hover:bg-red-100 font-medium"
@@ -1049,16 +1070,20 @@ export function PerformancePage() {
         refreshTrigger={tick}
         onMutate={onMutate}
         onBlock={ip => { onMutate(); openBlockModal(ip); }}
+        canDelete={canDeleteViolation}
+        canBlock={canBlockDevice}
       />
 
       {/* ── Blocked Devices table ── */}
-      <BlockedDevicesTable refreshTrigger={tick} onMutate={onMutate} />
+      <BlockedDevicesTable refreshTrigger={tick} onMutate={onMutate} canDelete={canUnblockDevice} />
 
       {/* ── Blocked IPs full table ── */}
       <BlockedIPsTable
         refreshTrigger={tick}
         onAddClick={() => openBlockModal()}
         onMutate={onMutate}
+        canAdd={canBlockIP}
+        canDelete={canUnblockIP}
       />
 
       {/* ── Block IP Modal ── */}

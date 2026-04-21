@@ -4,6 +4,7 @@ import { notificationsApi } from '../../api';
 import type { NotificationLog } from '../../api/types';
 import { swal } from '../../lib/swal';
 import { useToast } from '../../components/ui/Toast';
+import { useAuth } from '../../context/AuthContext';
 import { SectionSpinner } from '../../components/ui/Spinner';
 import { Modal } from '../../components/ui/Modal';
 
@@ -14,6 +15,8 @@ type ChannelFilter = 'all' | 'email' | 'sms';
 
 export function NotificationsPage() {
   const { error } = useToast();
+  const { hasPermission } = useAuth();
+  const canResend = hasPermission('notifications.change_notificationlog');
   const [logs, setLogs]           = useState<NotificationLog[]>([]);
   const [loading, setLoading]     = useState(true);
   const [status, setStatus]       = useState<StatusFilter>('all');
@@ -217,7 +220,7 @@ export function NotificationsPage() {
                         >
                           View
                         </button>
-                        {log.status === 'failed' && (
+                        {log.status === 'failed' && canResend && (
                           <button
                             onClick={() => handleResend(log)}
                             disabled={resending === log.id}
@@ -326,7 +329,7 @@ export function NotificationsPage() {
               </div>
             )}
 
-            {detail.status === 'failed' && (
+            {detail.status === 'failed' && canResend && (
               <button
                 onClick={() => { setDetail(null); handleResend(detail); }}
                 disabled={resending === detail.id}

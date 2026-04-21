@@ -9,6 +9,7 @@ import { Modal } from '../../components/ui/Modal';
 import { Logo } from '../../components/ui/Logo';
 import { useToast } from '../../components/ui/Toast';
 import { swal } from '../../lib/swal';
+import { useAuth } from '../../context/AuthContext';
 
 const STATUS_COLORS: Record<ContactMessage['status'], 'blue' | 'green' | 'yellow'> = {
   new:    'blue',
@@ -20,6 +21,9 @@ type StatusFilter = 'all' | 'new' | 'read' | 'unread';
 
 export function MessagesPage() {
   const { error } = useToast();
+  const { hasPermission } = useAuth();
+  const canUpdateStatus = hasPermission('site_config.change_contactmessage');
+  const canDelete       = hasPermission('site_config.delete_contactmessage');
   const [messages, setMessages]     = useState<ContactMessage[]>([]);
   const [loading, setLoading]       = useState(true);
   const [selected, setSelected]     = useState<ContactMessage | null>(null);
@@ -133,24 +137,28 @@ export function MessagesPage() {
           >
             Read
           </button>
-          <select
-            value={m.status}
-            disabled={updating === m.id}
-            onChange={e => handleStatusChange(m, e.target.value as ContactMessage['status'])}
-            className="text-xs border border-earth-200 rounded-lg px-2 py-1 bg-white text-earth-700 focus:outline-none focus:ring-1 focus:ring-primary-400 disabled:opacity-50"
-          >
-            <option value="new">New</option>
-            <option value="read">Read</option>
-            <option value="unread">Unread</option>
-          </select>
-          <button
-            onClick={() => handleDelete(m)}
-            disabled={deleting === m.id}
-            className="p-1.5 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-40"
-            title="Delete"
-          >
-            <Trash2 size={13} className="text-red-400" />
-          </button>
+          {canUpdateStatus && (
+            <select
+              value={m.status}
+              disabled={updating === m.id}
+              onChange={e => handleStatusChange(m, e.target.value as ContactMessage['status'])}
+              className="text-xs border border-earth-200 rounded-lg px-2 py-1 bg-white text-earth-700 focus:outline-none focus:ring-1 focus:ring-primary-400 disabled:opacity-50"
+            >
+              <option value="new">New</option>
+              <option value="read">Read</option>
+              <option value="unread">Unread</option>
+            </select>
+          )}
+          {canDelete && (
+            <button
+              onClick={() => handleDelete(m)}
+              disabled={deleting === m.id}
+              className="p-1.5 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-40"
+              title="Delete"
+            >
+              <Trash2 size={13} className="text-red-400" />
+            </button>
+          )}
         </div>
       ),
     },

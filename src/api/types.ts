@@ -58,11 +58,58 @@ export interface Auction {
   start_time: string;
   end_time: string;
   status: 'pending' | 'live' | 'ended' | 'cancelled';
-  winner_name: string;
+  winner_name: string | null;
   total_bids: number;
   unique_bidders: number;
-  top_bids: string;
-  seconds_remaining: string;
+  top_bids: AuctionBid[];
+  seconds_remaining: number;
+  payment_status: 'pending' | 'paid' | 'expired' | null;
+  payment_deadline: string | null;
+  created_at: string;
+}
+
+export interface AuctionBid {
+  uuid: string;
+  bidder_name: string;
+  amount: string;
+  is_winning: boolean;
+  created_at: string;
+}
+
+export interface AuctionConfig {
+  payment_mode: 'free_bid' | 'balance_required' | 'auto_deduct';
+  payment_deadline_hours: number;
+  max_violations: number;
+  ban_duration_days: number;
+  relist_on_expired: boolean;
+  relist_duration_hours: number;
+  updated_at: string;
+}
+
+export interface AuctionWinner {
+  id: number;
+  auction_uuid: string;
+  artwork_name: string;
+  user_name: string;
+  user_email: string;
+  bid_amount: string;
+  currency: string;
+  payment_mode: string;
+  payment_status: 'pending' | 'paid' | 'expired';
+  payment_deadline: string | null;
+  paid_at: string | null;
+  is_overdue: boolean;
+  hours_remaining: number | null;
+  created_at: string;
+}
+
+export interface AuctionViolation {
+  id: number;
+  user_name: string;
+  user_email: string;
+  artwork_name: string;
+  auction_uuid: string;
+  bid_amount: string;
   created_at: string;
 }
 

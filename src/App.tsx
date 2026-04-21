@@ -1,5 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { useEffect } from 'react';
 import { AuthProvider } from './context/AuthContext';
+import { siteApi } from './api';
 import { AuthModalProvider } from './context/AuthModalContext';
 import { ToastProvider } from './components/ui/Toast';
 import { ThemeProvider } from './context/ThemeContext';
@@ -27,6 +29,7 @@ import { CategoriesPage } from './pages/dashboard/CategoriesPage';
 import { CurrenciesPage } from './pages/dashboard/CurrenciesPage';
 import { AuctionsPage } from './pages/dashboard/AuctionsPage';
 import { AuctionDetailPage } from './pages/dashboard/AuctionDetailPage';
+import AuctionConfigPage from './pages/dashboard/AuctionConfigPage';
 import { OrdersPage } from './pages/dashboard/OrdersPage';
 import { CartPage } from './pages/dashboard/CartPage';
 import { WalletPage } from './pages/dashboard/WalletPage';
@@ -40,6 +43,25 @@ import { ReportsPage } from './pages/dashboard/ReportsPage';
 import { PerformancePage } from './pages/dashboard/PerformancePage';
 import { NotificationsPage } from './pages/dashboard/NotificationsPage';
 
+function useDynamicFavicon() {
+  useEffect(() => {
+    siteApi.getFavicon()
+      .then(res => {
+        const url = res.data.favicon_url;
+        if (!url) return;
+        let link = document.querySelector<HTMLLinkElement>('link[rel="icon"]');
+        if (!link) {
+          link = document.createElement('link');
+          link.rel = 'icon';
+          document.head.appendChild(link);
+        }
+        link.type = 'image/png';
+        link.href = url;
+      })
+      .catch(() => {});
+  }, []);
+}
+
 function DashboardWrapper({ children }: { children: React.ReactNode }) {
   return (
     <ProtectedRoute>
@@ -49,6 +71,7 @@ function DashboardWrapper({ children }: { children: React.ReactNode }) {
 }
 
 export default function App() {
+  useDynamicFavicon();
   return (
     <BrowserRouter>
       <ThemeProvider>
@@ -77,6 +100,7 @@ export default function App() {
             <Route path="/dashboard/currencies" element={<DashboardWrapper><CurrenciesPage /></DashboardWrapper>} />
             <Route path="/dashboard/auctions" element={<DashboardWrapper><AuctionsPage /></DashboardWrapper>} />
             <Route path="/dashboard/auctions/:uuid" element={<DashboardWrapper><AuctionDetailPage /></DashboardWrapper>} />
+            <Route path="/dashboard/auction-config" element={<DashboardWrapper><AuctionConfigPage /></DashboardWrapper>} />
             <Route path="/dashboard/orders" element={<DashboardWrapper><OrdersPage /></DashboardWrapper>} />
             <Route path="/dashboard/cart" element={<DashboardWrapper><CartPage /></DashboardWrapper>} />
             <Route path="/dashboard/wallet" element={<DashboardWrapper><WalletPage /></DashboardWrapper>} />

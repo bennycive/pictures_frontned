@@ -1,5 +1,5 @@
 import api from './client';
-import type { Paginated, Artwork, Category, Currency, Auction, Cart, Order, Profile, Wallet, ActivityLog, TokenResponse, User, Role, Permission, AdminUser, HeroContent, LandingHero, ContactInfo, ContactMessage, ArtistProfile, Exhibition, AdminWallet, BlockedIP, BlockedDevice, SecurityStats, SecurityConfig, RateLimitViolation, ErrorRequestLog, Address, NotificationLog } from './types';
+import type { Paginated, Artwork, Category, Currency, Auction, AuctionConfig, AuctionWinner, AuctionViolation, Cart, Order, Profile, Wallet, ActivityLog, TokenResponse, User, Role, Permission, AdminUser, HeroContent, LandingHero, ContactInfo, ContactMessage, ArtistProfile, Exhibition, AdminWallet, BlockedIP, BlockedDevice, SecurityStats, SecurityConfig, RateLimitViolation, ErrorRequestLog, Address, NotificationLog } from './types';
 
 // Auth
 export const authApi = {
@@ -77,6 +77,29 @@ export const auctionsApi = {
   end: (uuid: string) => api.post(`/api/auctions/${uuid}/end/`),
   bid: (uuid: string, amount: string) =>
     api.post(`/api/auctions/${uuid}/bid/`, { amount }),
+};
+
+// Auction Config (admin)
+export const auctionConfigApi = {
+  get: () => api.get<AuctionConfig>('/api/auctions/config/'),
+  update: (data: Partial<AuctionConfig>) => api.patch<AuctionConfig>('/api/auctions/config/', data),
+};
+
+// Auction Winners (admin)
+export const auctionWinnersApi = {
+  list: (params?: { payment_status?: string }) =>
+    api.get<AuctionWinner[]>('/api/auctions/winners/', { params }),
+  markPaid: (id: number) =>
+    api.post<AuctionWinner>(`/api/auctions/winners/${id}/mark-paid/`),
+};
+
+// Auction Violations (admin)
+export const auctionViolationsApi = {
+  list: () => api.get<AuctionViolation[]>('/api/auctions/violations/'),
+  reviewBan: (id: number) =>
+    api.post<{ user: string; total_violations: number; bidding_suspended: boolean; max_violations: number }>(
+      `/api/auctions/violations/${id}/ban/`
+    ),
 };
 
 // Cart

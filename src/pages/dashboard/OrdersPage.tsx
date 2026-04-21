@@ -71,9 +71,11 @@ export function OrdersPage() {
     setUpdating(true);
     try {
       await ordersApi.updateStatus(selected.uuid, newStatus);
+      const updated = newStatus as Order['status'];
+      setOrders(prev => prev.map(o => o.uuid === selected.uuid ? { ...o, status: updated } : o));
+      setSelected(prev => prev ? { ...prev, status: updated } : null);
       swal.success('Order status updated');
       setStatusModal(false);
-      load(activeTab);
     } catch {
       error('Failed to update status');
     } finally {

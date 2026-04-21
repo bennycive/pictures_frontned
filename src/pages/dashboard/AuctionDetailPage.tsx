@@ -114,8 +114,8 @@ export function AuctionDetailPage() {
       setFlash(true);
       setTimeout(() => setFlash(false), 1200);
     } catch (err: unknown) {
-      const msg = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail;
-      error(msg || 'Failed to place bid. Check your wallet balance.');
+      const data = (err as { response?: { data?: { message?: string; detail?: string } } })?.response?.data;
+      error(data?.message || data?.detail || 'Failed to place bid. Check your wallet balance.');
     } finally {
       setBidding(false);
     }
@@ -136,10 +136,7 @@ export function AuctionDetailPage() {
   if (loading) return <PageSpinner />;
   if (!base || !live) return <div className="text-center py-20 text-earth-400">Auction not found.</div>;
 
-  const topBids = (() => {
-    try { return JSON.parse(live.top_bids) as Array<{ bidder_name: string; amount: string; is_winning: boolean }>; }
-    catch { return []; }
-  })();
+  const topBids = live.top_bids ?? [];
 
   return (
     <div className="space-y-6">
@@ -168,13 +165,15 @@ export function AuctionDetailPage() {
             </div>
             <p className="text-sm text-earth-500">By {base.created_by_name}</p>
 
-            {live.status === 'live' && timeLeft && (
+            {live.status === 'live' && (
               <div className="bg-red-50 border border-red-100 rounded-xl p-4 flex items-center justify-between">
                 <div className="flex items-center gap-2 text-red-600">
                   <Clock size={18} />
                   <span className="text-sm font-medium">Time remaining</span>
                 </div>
-                <span className="font-bold text-red-700 text-xl font-mono tracking-widest">{timeLeft}</span>
+                <span className="font-bold text-red-700 text-xl font-mono tracking-widest">
+                  {timeLeft || '--:--:--'}
+                </span>
               </div>
             )}
 
@@ -244,7 +243,7 @@ export function AuctionDetailPage() {
                       {bid.is_winning && <span className="text-xs text-green-600 font-medium">Winning</span>}
                     </div>
                     <span className={`font-bold text-sm ${bid.is_winning ? 'text-green-700' : 'text-earth-700'}`}>
-                      {auction.currency} {bid.amount}
+                      {base.currency} {bid.amount}
                     </span>
                   </div>
                 ))}
