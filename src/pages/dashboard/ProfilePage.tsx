@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import { profileApi, authApi, addressesApi } from '../../api';
 import { Logo } from '../../components/ui/Logo';
+import { PhoneInput } from '../../components/ui/PhoneInput';
 import type { Profile, Address } from '../../api/types';
 import { useToast } from '../../components/ui/Toast';
 import { swal } from '../../lib/swal';
@@ -403,23 +404,23 @@ export function ProfilePage() {
             <div className="px-5 pb-5">
               {editingAccount ? (
                 <form id="account-form" onSubmit={handleSaveAccount} className="space-y-3 pt-1">
-                  {[
-                    { key: 'name',  label: 'Full Name', type: 'text',  placeholder: 'Your name',        required: true },
-                    { key: 'email', label: 'Email',     type: 'email', placeholder: 'email@example.com', required: false },
-                    { key: 'phone', label: 'Phone',     type: 'tel',   placeholder: '+255 712 345 678',  required: false },
-                  ].map(f => (
-                    <div key={f.key}>
-                      <label className="block text-xs text-earth-500 mb-1">{f.label}</label>
-                      <input
-                        type={f.type}
-                        required={f.required}
-                        className="input w-full text-sm"
-                        value={accountFields[f.key as keyof typeof accountFields]}
-                        onChange={e => setAccountFields(p => ({ ...p, [f.key]: e.target.value }))}
-                        placeholder={f.placeholder}
-                      />
-                    </div>
-                  ))}
+                  <div>
+                    <label className="block text-xs text-earth-500 mb-1">Full Name</label>
+                    <input type="text" required className="input w-full text-sm" placeholder="Your name"
+                      value={accountFields.name} onChange={e => setAccountFields(p => ({ ...p, name: e.target.value }))} />
+                  </div>
+                  <div>
+                    <label className="block text-xs text-earth-500 mb-1">Email</label>
+                    <input type="email" className="input w-full text-sm" placeholder="email@example.com"
+                      value={accountFields.email} onChange={e => setAccountFields(p => ({ ...p, email: e.target.value }))} />
+                  </div>
+                  <div>
+                    <label className="block text-xs text-earth-500 mb-1">Phone</label>
+                    <PhoneInput
+                      value={accountFields.phone}
+                      onChange={phone => setAccountFields(p => ({ ...p, phone }))}
+                    />
+                  </div>
                 </form>
               ) : (
                 <div className="divide-y divide-earth-50">

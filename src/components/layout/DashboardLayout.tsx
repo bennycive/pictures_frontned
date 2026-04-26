@@ -5,7 +5,7 @@ import {
   LayoutDashboard, Image, Tag, DollarSign, Gavel, ShoppingBag,
   Package, User, Wallet, ClipboardList, LogOut, Menu, ChevronRight,
   Shield, Users, Settings2, Inbox, BarChart2, Activity, Bell,
-  Zap, X, SlidersHorizontal,
+  Zap, X, SlidersHorizontal, CreditCard,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { profileApi, siteApi, cartApi } from '../../api';
@@ -253,6 +253,7 @@ const navItems: NavItem[] = [
   { label: 'Currencies',     icon: DollarSign,      to: '/dashboard/currencies',    permission: 'currencies.view_currency' },
   { label: 'Auctions',       icon: Gavel,           to: '/dashboard/auctions',      permission: 'auctions.view_auction' },
   { label: 'Auction Config', icon: SlidersHorizontal, to: '/dashboard/auction-config', permission: 'auctions.change_auctionconfig' },
+  { label: 'Payments',       icon: CreditCard,      to: '/dashboard/payments',      adminOnly: true },
   { label: 'Orders',         icon: Package,         to: '/dashboard/orders',        permission: 'orders.view_order' },
   { label: 'Cart',           icon: ShoppingBag,     to: '/dashboard/cart' },
   { label: 'Wallet',         icon: Wallet,          to: '/dashboard/wallet',        permission: 'wallet.view_wallet' },

@@ -220,6 +220,7 @@ export interface Order {
   status: 'pending' | 'confirmed' | 'shipped' | 'delivered' | 'cancelled';
   total: string;
   currency: string;
+  payment_channel: string;
   items: OrderItem[];
   delivery_name: string;
   delivery_phone: string;
@@ -231,6 +232,58 @@ export interface Order {
   buyer_uuid?: string;
   buyer_name?: string;
   buyer_email?: string;
+}
+
+export interface PaymentMethod {
+  id?: number;
+  channel: 'bank_transfer' | 'stripe' | 'selcom';
+  display_name: string;
+  description: string;
+  is_active: boolean;
+  sort_order: number;
+  config: Record<string, string>;
+  updated_at?: string;
+  public_config?: Record<string, string>;
+}
+
+export interface PaymentTransaction {
+  id: number;
+  order_uuid: string;
+  user_name: string;
+  user_email: string;
+  channel: string;
+  amount: string;
+  currency: string;
+  status: 'pending' | 'processing' | 'completed' | 'failed' | 'refunded' | 'cancelled';
+  reference: string;
+  proof_image: string | null;
+  external_id: string;
+  admin_notes: string;
+  confirmed_by_name: string | null;
+  created_at: string;
+  paid_at: string | null;
+  updated_at: string;
+}
+
+export interface InitiatePaymentResponse {
+  transaction_id: number;
+  channel: string;
+  amount: string;
+  currency: string;
+  // bank_transfer
+  bank_details?: {
+    bank_name: string;
+    account_number: string;
+    account_name: string;
+    branch: string;
+    swift_code: string;
+    instructions: string;
+  };
+  // stripe
+  client_secret?: string;
+  publishable_key?: string;
+  // selcom
+  payment_url?: string;
 }
 
 export interface Profile {

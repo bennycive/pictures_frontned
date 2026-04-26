@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
-import { Trash2, ShoppingCart, ArrowRight, MapPin, ChevronDown } from 'lucide-react';
-import { cartApi, ordersApi, addressesApi } from '../../api';
-import type { Cart, Address } from '../../api/types';
+import { Trash2, ShoppingCart, ArrowRight, MapPin, ChevronDown, Building2, CreditCard, Smartphone, CheckCircle, Upload, ExternalLink } from 'lucide-react';
+import { cartApi, ordersApi, addressesApi, paymentsApi } from '../../api';
+import type { Cart, Address, PaymentMethod, InitiatePaymentResponse } from '../../api/types';
 import { Modal } from '../../components/ui/Modal';
 import { useToast } from '../../components/ui/Toast';
 import { swal } from '../../lib/swal';
@@ -18,8 +18,14 @@ const BLANK: CheckoutForm = {
   delivery_city: '', delivery_country: 'Tanzania', notes: '',
 };
 
+const CHANNEL_ICON: Record<string, React.ElementType> = {
+  bank_transfer: Building2,
+  stripe: CreditCard,
+  selcom: Smartphone,
+};
+
 export function CartPage() {
-  const { error } = useToast();
+  const { error, success } = useToast();
   const navigate = useNavigate();
   const [cart, setCart] = useState<Cart | null>(null);
   const [loading, setLoading] = useState(true);
@@ -27,9 +33,18 @@ export function CartPage() {
   const [checkoutForm, setCheckoutForm] = useState<CheckoutForm>(BLANK);
   const [placing, setPlacing] = useState(false);
 
-  // saved addresses
   const [addresses, setAddresses] = useState<Address[]>([]);
   const [selectedAddrId, setSelectedAddrId] = useState<number | 'manual'>('manual');
+
+  const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([]);
+  const [selectedChannel, setSelectedChannel] = useState<string>('');
+
+  // Post-checkout payment state
+  const [paymentData, setPaymentData] = useState<InitiatePaymentResponse | null>(null);
+  const [paymentOpen, setPaymentOpen] = useState(false);
+  const [bankRef, setBankRef] = useState('');
+  const [bankProof, setBankProof] = useState<File | null>(null);
+  const [submittingRef, setSubmittingRef] = useState(false);
 
   const load = async () => {
     setLoading(true);
@@ -42,9 +57,15 @@ export function CartPage() {
 
   const openCheckout = async () => {
     try {
-      const { data } = await addressesApi.list();
-      setAddresses(data);
-      const def = data.find(a => a.is_default) ?? data[0] ?? null;
+      const [addrRes, methodsRes] = await Promise.all([
+        addressesApi.list(),
+        paymentsApi.getMethods(),
+      ]);
+      setAddresses(addrRes.data);
+      setPaymentMethods(methodsRes.data);
+      if (methodsRes.data.length > 0) setSelectedChannel(methodsRes.data[0].channel);
+
+      const def = addrRes.data.find(a => a.is_default) ?? addrRes.data[0] ?? null;
       if (def) {
         setSelectedAddrId(def.id);
         setCheckoutForm(f => ({
@@ -61,6 +82,7 @@ export function CartPage() {
       }
     } catch {
       setAddresses([]);
+      setPaymentMethods([]);
       setSelectedAddrId('manual');
       setCheckoutForm(BLANK);
     }
@@ -69,10 +91,7 @@ export function CartPage() {
 
   const handleSelectAddress = (id: number | 'manual') => {
     setSelectedAddrId(id);
-    if (id === 'manual') {
-      setCheckoutForm(BLANK);
-      return;
-    }
+    if (id === 'manual') { setCheckoutForm(BLANK); return; }
     const addr = addresses.find(a => a.id === id);
     if (addr) {
       setCheckoutForm(f => ({
@@ -95,14 +114,47 @@ export function CartPage() {
 
   const handleCheckout = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!selectedChannel) { error('Please select a payment method.'); return; }
     setPlacing(true);
     try {
-      await ordersApi.checkout(checkoutForm as unknown as Record<string, unknown>);
-      swal.success('Order placed successfully!');
+      const { data: order } = await ordersApi.checkout(checkoutForm as unknown as Record<string, unknown>);
       setCheckoutOpen(false);
+
+      // Initiate payment
+      const { data: payment } = await paymentsApi.initiate({
+        order_uuid: order.uuid,
+        channel: selectedChannel,
+      });
+      setPaymentData(payment);
+      setBankRef('');
+      setBankProof(null);
+      setPaymentOpen(true);
+    } catch (err: unknown) {
+      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
+      error(msg || 'Checkout failed. Please try again.');
+    } finally {
+      setPlacing(false);
+    }
+  };
+
+  const handleBankSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!paymentData || !bankRef.trim()) return;
+    setSubmittingRef(true);
+    try {
+      const fd = new FormData();
+      fd.append('transaction_id', String(paymentData.transaction_id));
+      fd.append('reference', bankRef.trim());
+      if (bankProof) fd.append('proof_image', bankProof);
+      await paymentsApi.submitBankTransfer(fd);
+      success('Reference submitted! Admin will verify and confirm your payment.');
+      setPaymentOpen(false);
       navigate('/dashboard/orders');
-    } catch { error('Checkout failed. Please try again.'); }
-    finally { setPlacing(false); }
+    } catch {
+      error('Failed to submit reference. Please try again.');
+    } finally {
+      setSubmittingRef(false);
+    }
   };
 
   if (loading) return <SectionSpinner />;
@@ -122,7 +174,6 @@ export function CartPage() {
         </div>
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Items list */}
           <div className="lg:col-span-2 space-y-3">
             {items.map(item => (
               <div key={item.uuid} className="bg-white rounded-xl border border-earth-100 p-4 flex items-center gap-4">
@@ -143,7 +194,6 @@ export function CartPage() {
             ))}
           </div>
 
-          {/* Summary */}
           <div className="bg-white rounded-xl border border-earth-100 p-6 h-fit space-y-4">
             <h3 className="font-semibold text-earth-900">Order Summary</h3>
             <div className="space-y-2 text-sm">
@@ -167,7 +217,7 @@ export function CartPage() {
 
       {/* Checkout modal */}
       <Modal open={checkoutOpen} onClose={() => setCheckoutOpen(false)} title="Checkout" size="lg">
-        <form onSubmit={handleCheckout} className="space-y-4">
+        <form onSubmit={handleCheckout} className="space-y-5">
 
           {/* Saved address picker */}
           {addresses.length > 0 && (
@@ -180,18 +230,10 @@ export function CartPage() {
                   <label
                     key={addr.id}
                     className={`flex items-start gap-3 p-3 rounded-xl border cursor-pointer transition-colors ${
-                      selectedAddrId === addr.id
-                        ? 'border-primary-400 bg-primary-50/40'
-                        : 'border-earth-100 hover:border-earth-300'
+                      selectedAddrId === addr.id ? 'border-primary-400 bg-primary-50/40' : 'border-earth-100 hover:border-earth-300'
                     }`}
                   >
-                    <input
-                      type="radio"
-                      name="addr"
-                      className="mt-1 accent-primary-600"
-                      checked={selectedAddrId === addr.id}
-                      onChange={() => handleSelectAddress(addr.id)}
-                    />
+                    <input type="radio" name="addr" className="mt-1 accent-primary-600" checked={selectedAddrId === addr.id} onChange={() => handleSelectAddress(addr.id)} />
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
                         {addr.label && <span className="text-xs font-bold text-earth-500 uppercase">{addr.label}</span>}
@@ -199,33 +241,18 @@ export function CartPage() {
                       </div>
                       <p className="text-sm font-semibold text-earth-800">{addr.full_name}</p>
                       <p className="text-xs text-earth-500">{addr.address}, {addr.city}, {addr.country}</p>
-                      {addr.phone && <p className="text-xs text-earth-400">{addr.phone}</p>}
                     </div>
                   </label>
                 ))}
-                <label
-                  className={`flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-colors ${
-                    selectedAddrId === 'manual'
-                      ? 'border-primary-400 bg-primary-50/40'
-                      : 'border-earth-100 hover:border-earth-300'
-                  }`}
-                >
-                  <input
-                    type="radio"
-                    name="addr"
-                    className="accent-primary-600"
-                    checked={selectedAddrId === 'manual'}
-                    onChange={() => handleSelectAddress('manual')}
-                  />
-                  <span className="text-sm text-earth-600 flex items-center gap-1.5">
-                    <ChevronDown size={14} /> Enter a different address
-                  </span>
+                <label className={`flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-colors ${selectedAddrId === 'manual' ? 'border-primary-400 bg-primary-50/40' : 'border-earth-100 hover:border-earth-300'}`}>
+                  <input type="radio" name="addr" className="accent-primary-600" checked={selectedAddrId === 'manual'} onChange={() => handleSelectAddress('manual')} />
+                  <span className="text-sm text-earth-600 flex items-center gap-1.5"><ChevronDown size={14} /> Enter a different address</span>
                 </label>
               </div>
             </div>
           )}
 
-          {/* Manual form — shown when no saved addresses or "different address" selected */}
+          {/* Manual delivery form */}
           {(addresses.length === 0 || selectedAddrId === 'manual') && (
             <>
               <div className="grid grid-cols-2 gap-4">
@@ -259,7 +286,39 @@ export function CartPage() {
             <label className="block text-sm font-medium text-earth-700 mb-1">Notes (optional)</label>
             <textarea className="input h-16 resize-none" value={checkoutForm.notes} onChange={e => setCheckoutForm(f => ({ ...f, notes: e.target.value }))} />
           </div>
-          <div className="flex gap-3 pt-2">
+
+          {/* Payment method picker */}
+          {paymentMethods.length > 0 && (
+            <div>
+              <label className="block text-sm font-medium text-earth-700 mb-2">Payment Method</label>
+              <div className="grid grid-cols-1 gap-2">
+                {paymentMethods.map(m => {
+                  const Icon = CHANNEL_ICON[m.channel] ?? CreditCard;
+                  const active = selectedChannel === m.channel;
+                  return (
+                    <label
+                      key={m.channel}
+                      className={`flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-colors ${
+                        active ? 'border-primary-400 bg-primary-50/40' : 'border-earth-100 hover:border-earth-200'
+                      }`}
+                    >
+                      <input type="radio" name="channel" className="accent-primary-600" checked={active} onChange={() => setSelectedChannel(m.channel)} />
+                      <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${active ? 'bg-primary-100' : 'bg-earth-100'}`}>
+                        <Icon size={16} className={active ? 'text-primary-600' : 'text-earth-500'} />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-semibold text-earth-800">{m.display_name}</p>
+                        {m.description && <p className="text-xs text-earth-400 truncate">{m.description}</p>}
+                      </div>
+                      {active && <CheckCircle size={16} className="text-primary-500 shrink-0" />}
+                    </label>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          <div className="flex gap-3 pt-1">
             <button type="button" onClick={() => setCheckoutOpen(false)} className="btn-secondary flex-1">Cancel</button>
             <button type="submit" disabled={placing} className="btn-primary flex-1">
               {placing ? <Spinner size="sm" /> : null}
@@ -268,6 +327,102 @@ export function CartPage() {
           </div>
         </form>
       </Modal>
+
+      {/* Payment instructions modal */}
+      {paymentData && (
+        <Modal open={paymentOpen} onClose={() => { setPaymentOpen(false); navigate('/dashboard/orders'); }} title="Complete Your Payment" size="md">
+          <div className="space-y-4">
+            <div className="bg-earth-50 rounded-xl p-4 text-sm text-earth-700">
+              <p className="font-semibold text-earth-900 mb-1">Order Amount</p>
+              <p className="text-2xl font-bold text-primary-700">{paymentData.currency} {paymentData.amount}</p>
+            </div>
+
+            {/* Bank Transfer */}
+            {paymentData.channel === 'bank_transfer' && paymentData.bank_details && (
+              <>
+                <div className="bg-white border border-earth-100 rounded-xl p-4 space-y-2 text-sm">
+                  <p className="font-semibold text-earth-800 mb-2 flex items-center gap-2">
+                    <Building2 size={16} className="text-primary-500" /> Bank Transfer Details
+                  </p>
+                  {Object.entries(paymentData.bank_details).map(([k, v]) => v ? (
+                    <div key={k} className="flex justify-between gap-2">
+                      <span className="text-earth-500 capitalize">{k.replace(/_/g, ' ')}</span>
+                      <span className="font-medium text-earth-800 text-right">{v}</span>
+                    </div>
+                  ) : null)}
+                </div>
+
+                <form onSubmit={handleBankSubmit} className="space-y-3">
+                  <p className="text-sm font-medium text-earth-700">After making the transfer, submit your reference number below:</p>
+                  <div>
+                    <label className="block text-xs font-medium text-earth-600 mb-1">Transfer Reference / Transaction ID</label>
+                    <input
+                      className="input"
+                      placeholder="e.g. TXN123456789"
+                      value={bankRef}
+                      onChange={e => setBankRef(e.target.value)}
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-earth-600 mb-1">Proof of Payment (optional)</label>
+                    <label className="flex items-center gap-2 p-3 border border-dashed border-earth-200 rounded-xl cursor-pointer hover:border-primary-300 transition-colors">
+                      <Upload size={16} className="text-earth-400" />
+                      <span className="text-sm text-earth-500">{bankProof ? bankProof.name : 'Upload receipt / screenshot'}</span>
+                      <input type="file" accept="image/*" className="hidden" onChange={e => setBankProof(e.target.files?.[0] ?? null)} />
+                    </label>
+                  </div>
+                  <div className="flex gap-3 pt-1">
+                    <button type="button" onClick={() => { setPaymentOpen(false); navigate('/dashboard/orders'); }} className="btn-secondary flex-1">
+                      I'll submit later
+                    </button>
+                    <button type="submit" disabled={submittingRef} className="btn-primary flex-1">
+                      {submittingRef ? <Spinner size="sm" /> : null}
+                      {submittingRef ? 'Submitting…' : 'Submit Reference'}
+                    </button>
+                  </div>
+                </form>
+              </>
+            )}
+
+            {/* Stripe */}
+            {paymentData.channel === 'stripe' && (
+              <div className="text-center py-4 space-y-3">
+                <CreditCard size={40} className="text-primary-400 mx-auto" />
+                <p className="text-sm text-earth-600">You will be redirected to Stripe's secure payment page to complete your payment.</p>
+                <p className="text-xs text-earth-400">Transaction ID: {paymentData.transaction_id}</p>
+                <button
+                  onClick={() => { setPaymentOpen(false); navigate('/dashboard/orders'); }}
+                  className="btn-primary w-full flex items-center justify-center gap-2"
+                >
+                  <ExternalLink size={16} /> Continue to Stripe
+                </button>
+              </div>
+            )}
+
+            {/* Selcom */}
+            {paymentData.channel === 'selcom' && (
+              <div className="text-center py-4 space-y-3">
+                <Smartphone size={40} className="text-primary-400 mx-auto" />
+                <p className="text-sm text-earth-600">You will be redirected to Selcom's mobile money payment page.</p>
+                {paymentData.payment_url && (
+                  <a
+                    href={paymentData.payment_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="btn-primary w-full flex items-center justify-center gap-2"
+                  >
+                    <ExternalLink size={16} /> Pay with Selcom
+                  </a>
+                )}
+                <button onClick={() => { setPaymentOpen(false); navigate('/dashboard/orders'); }} className="btn-secondary w-full">
+                  I'll pay later
+                </button>
+              </div>
+            )}
+          </div>
+        </Modal>
+      )}
     </div>
   );
 }

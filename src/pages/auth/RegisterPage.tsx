@@ -4,6 +4,7 @@ import { Eye, EyeOff, UserPlus } from 'lucide-react';
 import { authApi } from '../../api';
 import { useToast } from '../../components/ui/Toast';
 import { Logo } from '../../components/ui/Logo';
+import { PhoneInput } from '../../components/ui/PhoneInput';
 
 function GoogleIcon() {
   return (
@@ -105,8 +106,11 @@ export function RegisterPage() {
                 {tab === 'email'
                   ? <input type="email" className="input" placeholder="jane@example.com"
                       value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} required />
-                  : <input type="tel" className="input" placeholder="+255712345678"
-                      value={form.phone} onChange={e => setForm(f => ({ ...f, phone: e.target.value }))} required />
+                  : <PhoneInput
+                      value={form.phone}
+                      onChange={phone => setForm(f => ({ ...f, phone }))}
+                      required
+                    />
                 }
               </div>
 

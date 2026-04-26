@@ -42,6 +42,7 @@ import { MessagesPage } from './pages/dashboard/MessagesPage';
 import { ReportsPage } from './pages/dashboard/ReportsPage';
 import { PerformancePage } from './pages/dashboard/PerformancePage';
 import { NotificationsPage } from './pages/dashboard/NotificationsPage';
+import { PaymentMethodsPage } from './pages/dashboard/PaymentMethodsPage';
 
 function useDynamicFavicon() {
   useEffect(() => {
@@ -113,6 +114,7 @@ export default function App() {
             <Route path="/dashboard/reports" element={<DashboardWrapper><ReportsPage /></DashboardWrapper>} />
             <Route path="/dashboard/performance" element={<DashboardWrapper><PerformancePage /></DashboardWrapper>} />
             <Route path="/dashboard/notifications" element={<DashboardWrapper><NotificationsPage /></DashboardWrapper>} />
+            <Route path="/dashboard/payments" element={<DashboardWrapper><PaymentMethodsPage /></DashboardWrapper>} />
 
             {/* Fallback */}
             <Route path="*" element={<Navigate to="/" replace />} />

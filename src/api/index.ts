@@ -1,5 +1,5 @@
 import api from './client';
-import type { Paginated, Artwork, Category, Currency, Auction, AuctionConfig, AuctionWinner, AuctionViolation, Cart, Order, Profile, Wallet, ActivityLog, TokenResponse, User, Role, Permission, AdminUser, HeroContent, LandingHero, ContactInfo, ContactMessage, ArtistProfile, Exhibition, AdminWallet, BlockedIP, BlockedDevice, SecurityStats, SecurityConfig, RateLimitViolation, ErrorRequestLog, Address, NotificationLog } from './types';
+import type { Paginated, Artwork, Category, Currency, Auction, AuctionConfig, AuctionWinner, AuctionViolation, Cart, Order, Profile, Wallet, ActivityLog, TokenResponse, User, Role, Permission, AdminUser, HeroContent, LandingHero, ContactInfo, ContactMessage, ArtistProfile, Exhibition, AdminWallet, BlockedIP, BlockedDevice, SecurityStats, SecurityConfig, RateLimitViolation, ErrorRequestLog, Address, NotificationLog, PaymentMethod, PaymentTransaction, InitiatePaymentResponse } from './types';
 
 // Auth
 export const authApi = {
@@ -278,6 +278,35 @@ export const notificationsApi = {
     api.get<NotificationLog[]>('/api/notifications/', { params }),
   resend: (id: number) =>
     api.post<{ detail: string }>(`/api/notifications/${id}/resend/`),
+};
+
+// Payments
+export const paymentsApi = {
+  // Public
+  getMethods: () => api.get<PaymentMethod[]>('/api/payments/methods/'),
+  initiate: (data: { order_uuid: string; channel: string }) =>
+    api.post<InitiatePaymentResponse>('/api/payments/initiate/', data),
+  submitBankTransfer: (data: FormData) =>
+    api.post<PaymentTransaction>('/api/payments/bank-transfer/submit/', data, {
+      headers: { 'Content-Type': undefined },
+    }),
+
+  // Admin — method config
+  adminGetMethods: () => api.get<PaymentMethod[]>('/api/payments/methods/admin/'),
+  adminGetMethod: (channel: string) =>
+    api.get<PaymentMethod>(`/api/payments/methods/${channel}/`),
+  adminUpdateMethod: (channel: string, data: Partial<PaymentMethod>) =>
+    api.patch<PaymentMethod>(`/api/payments/methods/${channel}/`, data),
+
+  // Admin — transactions
+  listTransactions: (params?: { channel?: string; status?: string }) =>
+    api.get<PaymentTransaction[]>('/api/payments/transactions/', { params }),
+  getTransaction: (id: number) =>
+    api.get<PaymentTransaction>(`/api/payments/transactions/${id}/`),
+  confirmTransaction: (id: number, admin_notes?: string) =>
+    api.post<PaymentTransaction>(`/api/payments/transactions/${id}/confirm/`, { admin_notes }),
+  cancelTransaction: (id: number) =>
+    api.post<PaymentTransaction>(`/api/payments/transactions/${id}/cancel/`),
 };
 
 // Admin wallet management
