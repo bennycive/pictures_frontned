@@ -191,7 +191,7 @@ export function AuctionsPublicPage() {
   const highestBid    = useMemo(() => {
     const prices = liveAuctions
       .filter(a => a.total_bids > 0 && a.current_price)
-      .map(a => parseFloat(a.current_price));
+      .map(a => parseFloat(a.current_price ?? '0'));
     return prices.length ? Math.max(...prices) : null;
   }, [liveAuctions]);
   const totalBids     = useMemo(() => liveAuctions.reduce((s, a) => s + (a.total_bids || 0), 0), [liveAuctions]);

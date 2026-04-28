@@ -1,5 +1,5 @@
 import { useEffect, useRef, useCallback } from 'react';
-import type { Auction } from '../api/types';
+import type { Auction, AuctionBid } from '../api/types';
 
 /** Shape of every message the server pushes over the WebSocket */
 interface AuctionSocketMessage {
@@ -8,7 +8,7 @@ interface AuctionSocketMessage {
   current_price?: string;
   minimum_next_bid?: string;
   total_bids?: number;
-  top_bids?: string;
+  top_bids?: AuctionBid[] | string;
   winner_name?: string;
   status?: Auction['status'];
   // Some backends send the full auction object
@@ -74,7 +74,17 @@ export function useAuctionSocket(uuid: string | undefined, { onUpdate, onError, 
       if (src.current_price   !== undefined) patch.current_price    = src.current_price;
       if (src.minimum_next_bid !== undefined) patch.minimum_next_bid = src.minimum_next_bid;
       if (src.total_bids       !== undefined) patch.total_bids       = src.total_bids;
-      if (src.top_bids         !== undefined) patch.top_bids         = src.top_bids;
+      if (src.top_bids !== undefined) {
+        if (typeof src.top_bids === 'string') {
+          try {
+            patch.top_bids = JSON.parse(src.top_bids) as AuctionBid[];
+          } catch {
+            patch.top_bids = [];
+          }
+        } else {
+          patch.top_bids = src.top_bids;
+        }
+      }
       if (src.winner_name      !== undefined) patch.winner_name      = src.winner_name;
       if (src.status           !== undefined) patch.status           = src.status;
 

@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
   Image, Tag, Gavel, Package, Wallet, ArrowRight,
-  ShoppingBag, Users, Bell, Mail, Shield, CheckCircle2, XCircle,
+  ShoppingBag, Users, Bell, Mail, CheckCircle2, XCircle,
   Activity,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
@@ -122,7 +122,7 @@ interface DashStats {
 
 /* ─── OverviewPage ─────────────────────────────────────────────────── */
 export function OverviewPage() {
-  const { user, hasPermission, isAdmin, hasRole } = useAuth();
+  const { user, hasPermission, isAdmin } = useAuth();
 
   const isStaff = user?.is_staff ?? false;
   const isPriv  = isAdmin() || isStaff;

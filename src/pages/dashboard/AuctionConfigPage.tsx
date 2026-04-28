@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import {
   Settings, CreditCard, Clock, AlertTriangle, RefreshCw,
-  CheckCircle, XCircle, ChevronDown, User, Search, Shield, Ban,
+  CheckCircle, XCircle, ChevronDown, User, Search, Ban,
   Wallet, ShieldCheck, Zap,
 } from 'lucide-react';
 import { auctionConfigApi, auctionWinnersApi, auctionViolationsApi } from '../../api';
@@ -243,7 +243,10 @@ function WinnersPanel({ canMarkPaid }: { canMarkPaid: boolean }) {
   useEffect(() => { load(); }, [filter]); // eslint-disable-line
 
   async function markPaid(id: number) {
-    const ok = await swal.confirm('Mark as Paid?', 'This will manually mark the winner as having completed payment.');
+    const ok = await swal.confirm({
+      title: 'Mark as Paid?',
+      text: 'This will manually mark the winner as having completed payment.',
+    });
     if (!ok) return;
     setMarking(id);
     try {

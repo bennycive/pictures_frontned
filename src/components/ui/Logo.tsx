@@ -6,17 +6,22 @@
 interface LogoProps {
   variant?: 'light' | 'dark';
   className?: string;
+  size?: number;
+  showText?: boolean;
 }
 
-export function Logo({ variant = 'light', className = '' }: LogoProps) {
+export function Logo({ variant = 'light', className = '', size, showText = true }: LogoProps) {
   // cls-2 is the "AFR" white fill — swap to dark brown on light backgrounds
   const textFill = variant === 'dark' ? '#462718' : '#ffffff';
+  const iconOnly = !showText;
 
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
-      viewBox="0 0 277.84 40.34"
+      viewBox={iconOnly ? '0 0 43 41' : '0 0 277.84 40.34'}
       className={className}
+      width={size}
+      height={size}
       aria-label="AfriStudio"
     >
       {/* ── Icon / emblem ── */}
@@ -41,6 +46,8 @@ export function Logo({ variant = 'light', className = '' }: LogoProps) {
         <path fill="#462718" d="M27.02,32.61c.07.06.11.1.11.09,0,0-.04-.04-.11-.09Z"/>
       </g>
 
+      {!iconOnly && (
+      <>
       {/* ── "AFR" letters (white on dark / dark-brown on light) ── */}
       <g>
         {/* A */}
@@ -74,6 +81,8 @@ export function Logo({ variant = 'light', className = '' }: LogoProps) {
         <path fill="#f28e1c" d="M263.4,10.26c-2.16.92-3.94,2.72-5,5h9.42l-4.42-5Z"/>
         <path fill="#f28e1c" d="M276.97,15.29c-.56-1.49-1.36-2.83-2.38-3.98-1.02-1.15-2.21-2.05-3.53-2.69-1.37-.65-2.83-.99-4.33-.99s-2.96.33-4.33.99c-1.32.63-2.51,1.54-3.53,2.69-1.02,1.15-1.82,2.49-2.38,3.98-.58,1.55-.87,3.19-.87,4.88s.29,3.33.87,4.88c.56,1.49,1.36,2.83,2.38,3.98s2.21,2.05,3.53,2.69c1.37.65,2.83.99,4.33.99s2.96-.33,4.33-.99c1.32-.63,2.51-1.54,3.53-2.69s1.82-2.49,2.38-3.98c.58-1.55.87-3.19.87-4.88s-.29-3.33-.87-4.88h0ZM266.73,31.57c-5.58,0-10.1-5.1-10.1-11.4s4.52-11.4,10.1-11.4,10.1,5.1,10.1,11.4-4.52,11.4-10.1,11.4Z"/>
       </g>
+      </>
+      )}
     </svg>
   );
 }

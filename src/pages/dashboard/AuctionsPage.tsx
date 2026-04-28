@@ -422,14 +422,21 @@ export function AuctionsPage() {
   };
 
   const handleStart = async (a: Auction) => {
-    const ok = await swal.confirm({ title: `Start "${a.artwork_name}"?`, text: 'It will go live immediately.' });
+    const ok = await swal.confirm({
+      title: `Start auction for "${a.artwork_name}"?`,
+      text: 'It will go live immediately.',
+    });
     if (!ok) return;
     try { await auctionsApi.start(a.uuid); success('Auction started!'); load(); }
     catch { error('Failed to start auction'); }
   };
 
   const handleEnd = async (a: Auction) => {
-    const ok = await swal.confirm({ title: `End "${a.artwork_name}"?`, text: 'This will close bidding.', danger: true });
+    const ok = await swal.confirm({
+      title: `End auction for "${a.artwork_name}"?`,
+      text: 'This will close bidding.',
+      danger: true,
+    });
     if (!ok) return;
     try { await auctionsApi.end(a.uuid); success('Auction ended!'); load(); }
     catch { error('Failed to end auction'); }

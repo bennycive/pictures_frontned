@@ -311,7 +311,9 @@ export function ProfilePage() {
             <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2 mb-1">
               <h2 className="text-2xl font-bold text-white">{user?.name}</h2>
               {user?.verified_at && (
-                <BadgeCheck size={20} className="text-white/80" title="Verified account" />
+                <span title="Verified account" className="inline-flex">
+                  <BadgeCheck size={20} className="text-white/80" />
+                </span>
               )}
             </div>
             <p className="text-white/70 text-sm">{user?.email || user?.phone || 'No contact info'}</p>

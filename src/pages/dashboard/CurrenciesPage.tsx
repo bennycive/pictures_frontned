@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Plus, Pencil, Trash2, DollarSign, Check, X } from 'lucide-react';
+import { Plus, Pencil, Trash2, DollarSign, Check } from 'lucide-react';
 import { currenciesApi } from '../../api';
 import type { Currency } from '../../api/types';
 import { Modal } from '../../components/ui/Modal';

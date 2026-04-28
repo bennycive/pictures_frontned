@@ -106,7 +106,10 @@ export function PaymentMethodsPage() {
   const handleToggleActive = async (method: PaymentMethod) => {
     const next = !method.is_active;
     const label = next ? 'activate' : 'deactivate';
-    const ok = await swal.confirm(`${label.charAt(0).toUpperCase() + label.slice(1)} "${method.display_name}"?`, `This method will be ${next ? 'visible to users' : 'hidden from checkout'}.`);
+    const ok = await swal.confirm({
+      title: `${label.charAt(0).toUpperCase() + label.slice(1)} "${method.display_name}"?`,
+      text: `This method will be ${next ? 'visible to users' : 'hidden from checkout'}.`,
+    });
     if (!ok) return;
     try {
       await paymentsApi.adminUpdateMethod(method.channel, { is_active: next });
@@ -140,7 +143,10 @@ export function PaymentMethodsPage() {
   };
 
   const handleCancel = async (txn: PaymentTransaction) => {
-    const ok = await swal.confirm('Cancel this transaction?', 'This will mark the transaction as cancelled.');
+    const ok = await swal.confirm({
+      title: 'Cancel this transaction?',
+      text: 'This will mark the transaction as cancelled.',
+    });
     if (!ok) return;
     try {
       await paymentsApi.cancelTransaction(txn.id);

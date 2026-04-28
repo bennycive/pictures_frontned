@@ -2,7 +2,7 @@ import { useEffect, useState, useCallback, memo } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { ArrowLeft, Gavel, TrendingUp, Clock, LogIn, Image, Wifi, WifiOff, ChevronDown, ChevronLeft, ChevronRight } from 'lucide-react';
 import { auctionsApi } from '../../api';
-import type { Auction, Currency } from '../../api/types';
+import type { Auction, AuctionBid, Currency } from '../../api/types';
 import { useCurrency } from '../../hooks/useCurrency';
 import { useCurrencies } from '../../hooks/useCurrencies';
 import { Navbar } from '../../components/layout/Navbar';
@@ -90,8 +90,8 @@ const AuctionGallery = memo(function AuctionGallery({ base }: { base: AuctionBas
       {/* Main image */}
       <div className="relative bg-white rounded-2xl overflow-hidden border border-earth-100 shadow-sm group">
         <img
-          src={allImages[active]}
-          alt={`${base.artwork_name} — image ${active + 1}`}
+          src={allImages[safeActive]}
+          alt={`${base.artwork_name} — image ${safeActive + 1}`}
           className="w-full aspect-square object-cover"
         />
         {allImages.length > 1 && (
@@ -113,7 +113,7 @@ const AuctionGallery = memo(function AuctionGallery({ base }: { base: AuctionBas
                 <button
                   key={i}
                   onClick={() => setActive(i)}
-                  className={`w-2 h-2 rounded-full transition-colors ${i === active ? 'bg-white' : 'bg-white/50'}`}
+                  className={`w-2 h-2 rounded-full transition-colors ${i === safeActive ? 'bg-white' : 'bg-white/50'}`}
                 />
               ))}
             </div>
@@ -129,7 +129,7 @@ const AuctionGallery = memo(function AuctionGallery({ base }: { base: AuctionBas
               key={i}
               onClick={() => setActive(i)}
               className={`shrink-0 w-16 h-16 rounded-xl overflow-hidden border-2 transition-colors ${
-                i === active ? 'border-primary-500' : 'border-earth-100 hover:border-earth-300'
+                i === safeActive ? 'border-primary-500' : 'border-earth-100 hover:border-earth-300'
               }`}
             >
               <img src={src} alt={`thumb ${i + 1}`} className="w-full h-full object-cover" />
@@ -176,7 +176,7 @@ const TopBids = memo(function TopBids({
   displayCurrency,
   currencies,
 }: {
-  topBids: Auction['top_bids'];
+  topBids: AuctionBid[];
   nativeCurrency: string;
   displayCurrency: string;
   currencies: Currency[];

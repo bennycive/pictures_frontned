@@ -104,10 +104,6 @@ export function SliderCaptcha({ onVerified, resetKey = 0 }: Props) {
     };
   }, [finish, clamp]);
 
-  const pct = trackRef.current
-    ? (offset / trackWidth()) * 100
-    : 0;
-
   return (
     <div className="select-none">
       {/* Track */}
