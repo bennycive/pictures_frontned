@@ -17,6 +17,7 @@ export function VerifyPage() {
   const [identifierValue, setIdentifierValue] = useState(identifier);
   const [digits, setDigits] = useState<string[]>(Array(CODE_LENGTH).fill(''));
   const [loading, setLoading] = useState(false);
+  const [resending, setResending] = useState(false);
 
   const code = digits.join('');
   const isComplete = code.length === CODE_LENGTH && digits.every(d => d !== '');
@@ -32,6 +33,24 @@ export function VerifyPage() {
       error('Invalid or expired code. Please try again.');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleResend = async () => {
+    if (!identifierValue.trim()) {
+      error('Enter your email or phone first.');
+      return;
+    }
+    setResending(true);
+    try {
+      await authApi.resendVerification({ identifier: identifierValue.trim() });
+      setDigits(Array(CODE_LENGTH).fill(''));
+      success('A new verification code has been sent.');
+    } catch (err: unknown) {
+      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
+      error(msg || 'Could not resend the code. Please try again.');
+    } finally {
+      setResending(false);
     }
   };
 
@@ -78,6 +97,14 @@ export function VerifyPage() {
                 className="btn-primary w-full py-3"
               >
                 {loading ? 'Verifying…' : 'Verify Account'}
+              </button>
+              <button
+                type="button"
+                onClick={handleResend}
+                disabled={loading || resending}
+                className="btn-secondary w-full py-3"
+              >
+                {resending ? 'Sending new code…' : "Didn't get a code? Resend"}
               </button>
             </form>
           </div>

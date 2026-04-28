@@ -9,6 +9,8 @@ export const authApi = {
     api.post('/api/auth/register', data),
   verifyAccount: (data: { identifier: string; code: string }) =>
     api.post('/api/auth/verify-account', data),
+  resendVerification: (data: { identifier: string }) =>
+    api.post('/api/auth/resend-verification', data),
   forgotPassword: (data: { login: string }) =>
     api.post('/api/auth/forgot-password', data),
   resetPassword: (data: { login: string; code: string; password: string; password_confirmation: string }) =>

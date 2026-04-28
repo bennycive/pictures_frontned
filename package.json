@@ -16,6 +16,7 @@
     "notyf": "^3.10.0",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
+    "react-is": "^19.2.5",
     "react-router-dom": "^7.14.0",
     "recharts": "^3.8.1",
     "sweetalert2": "^11.26.24"

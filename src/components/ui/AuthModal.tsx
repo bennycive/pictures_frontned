@@ -56,6 +56,7 @@ export function AuthModal({ open, onClose, onSuccess, defaultTab = 'login', hint
   const { success, error, info } = useToast();
   const [tab, setTab] = useState<Tab>(defaultTab);
   const [loading, setLoading] = useState(false);
+  const [resendingVerify, setResendingVerify] = useState(false);
   const [showPass, setShowPass] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
   const [regTab, setRegTab] = useState<'email' | 'phone'>('email');
@@ -88,6 +89,7 @@ export function AuthModal({ open, onClose, onSuccess, defaultTab = 'login', hint
     setShowPass(false);
     setShowConfirm(false);
     setLoading(false);
+    setResendingVerify(false);
   };
 
   const handleClose = () => { reset(); onClose(); };
@@ -160,6 +162,24 @@ export function AuthModal({ open, onClose, onSuccess, defaultTab = 'login', hint
       error('Invalid or expired code. Please try again.');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleResendVerification = async () => {
+    if (!verifyId.trim()) {
+      error('Enter your email or phone first.');
+      return;
+    }
+    setResendingVerify(true);
+    try {
+      await authApi.resendVerification({ identifier: verifyId.trim() });
+      setVerifyDigits(Array(6).fill(''));
+      success('A new verification code has been sent.');
+    } catch (err: unknown) {
+      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
+      error(msg || 'Could not resend the code. Please try again.');
+    } finally {
+      setResendingVerify(false);
     }
   };
 
@@ -382,6 +402,14 @@ export function AuthModal({ open, onClose, onSuccess, defaultTab = 'login', hint
               </div>
               <button type="submit" disabled={loading || !verifyComplete} className="btn-primary w-full py-2.5">
                 {loading ? 'Verifying…' : 'Verify Account'}
+              </button>
+              <button
+                type="button"
+                onClick={handleResendVerification}
+                disabled={loading || resendingVerify}
+                className="btn-secondary w-full py-2.5"
+              >
+                {resendingVerify ? 'Sending new code…' : "Didn't get a code? Resend"}
               </button>
               <button type="button" onClick={() => setTab('login')}
                 className="w-full text-center text-sm text-earth-400 hover:text-earth-600 dark:hover:text-earth-200 transition-colors">
