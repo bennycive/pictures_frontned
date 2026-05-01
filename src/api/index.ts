@@ -1,5 +1,5 @@
 import api from './client';
-import type { Paginated, Artwork, Category, Currency, Auction, AuctionConfig, AuctionWinner, AuctionViolation, Cart, Order, Profile, Wallet, ActivityLog, TokenResponse, User, Role, Permission, AdminUser, HeroContent, LandingHero, ContactInfo, ContactMessage, ArtistProfile, Exhibition, AdminWallet, BlockedIP, BlockedDevice, SecurityStats, SecurityConfig, RateLimitViolation, ErrorRequestLog, Address, NotificationLog, PaymentMethod, PaymentTransaction, InitiatePaymentResponse } from './types';
+import type { Paginated, Artwork, ArtworkImage, Category, Currency, Auction, AuctionImage, AuctionConfig, AuctionWinner, AuctionViolation, Cart, Order, Profile, Wallet, ActivityLog, TokenResponse, User, Role, Permission, AdminUser, HeroContent, LandingHero, ContactInfo, ContactMessage, ArtistProfile, Exhibition, AdminWallet, BlockedIP, BlockedDevice, SecurityStats, SecurityConfig, RateLimitViolation, ErrorRequestLog, Address, NotificationLog, PaymentMethod, PaymentTransaction, InitiatePaymentResponse } from './types';
 
 // Auth
 export const authApi = {
@@ -34,6 +34,15 @@ export const artworksApi = {
     api.patch<Artwork>(`/api/artworks/${uuid}/`, data),
   delete: (uuid: string) =>
     api.delete(`/api/artworks/${uuid}/`),
+  // Images
+  listImages: (uuid: string) =>
+    api.get<ArtworkImage[]>(`/api/artworks/${uuid}/images/`),
+  uploadImage: (uuid: string, data: FormData) =>
+    api.post<ArtworkImage>(`/api/artworks/${uuid}/images/`, data, { headers: { 'Content-Type': undefined } }),
+  deleteImage: (uuid: string, id: number) =>
+    api.delete(`/api/artworks/${uuid}/images/${id}/`),
+  setPrimaryImage: (uuid: string, id: number) =>
+    api.patch<ArtworkImage>(`/api/artworks/${uuid}/images/${id}/set-primary/`),
 };
 
 // Categories
@@ -77,6 +86,15 @@ export const auctionsApi = {
   end: (uuid: string) => api.post(`/api/auctions/${uuid}/end/`),
   bid: (uuid: string, amount: string) =>
     api.post(`/api/auctions/${uuid}/bid/`, { amount }),
+  // Images
+  listImages: (uuid: string) =>
+    api.get<AuctionImage[]>(`/api/auctions/${uuid}/images/`),
+  uploadImage: (uuid: string, data: FormData) =>
+    api.post<AuctionImage>(`/api/auctions/${uuid}/images/`, data, { headers: { 'Content-Type': undefined } }),
+  deleteImage: (uuid: string, id: number) =>
+    api.delete(`/api/auctions/${uuid}/images/${id}/`),
+  setPrimaryImage: (uuid: string, id: number) =>
+    api.patch<AuctionImage>(`/api/auctions/${uuid}/images/${id}/set-primary/`),
 };
 
 // Auction Config (admin)
@@ -117,8 +135,8 @@ export const ordersApi = {
   get: (uuid: string) => api.get<Order>(`/api/orders/${uuid}/`),
   checkout: (data: Record<string, unknown>) =>
     api.post<Order>('/api/orders/checkout/', data),
-  updateStatus: (uuid: string, status: string) =>
-    api.put<Order>(`/api/orders/${uuid}/status/`, { status }),
+  updateStatus: (uuid: string, status: string, note?: string) =>
+    api.put<Order>(`/api/orders/${uuid}/status/`, { status, note: note || '' }),
 };
 
 // Addresses

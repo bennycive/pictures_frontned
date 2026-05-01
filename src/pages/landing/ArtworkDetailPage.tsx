@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { ArrowLeft, ShoppingCart, Image, LogIn, Gavel, Heart, Share2, Download } from 'lucide-react';
+import { ArrowLeft, ShoppingCart, Image, LogIn, Gavel, Heart, Share2, Download, ChevronLeft, ChevronRight } from 'lucide-react';
 import { artworksApi, cartApi, auctionsApi } from '../../api';
 import type { Artwork, Auction } from '../../api/types';
 import { useCurrencies } from '../../hooks/useCurrencies';
@@ -13,7 +13,6 @@ import { useAuth } from '../../context/AuthContext';
 import { useAuthModal } from '../../context/AuthModalContext';
 import { PageSpinner } from '../../components/ui/Spinner';
 import { downloadWithWatermark } from '../../utils/watermark';
-import { WatermarkedImage } from '../../components/ui/WatermarkedImage';
 
 export function ArtworkDetailPage() {
   const { uuid } = useParams<{ uuid: string }>();
@@ -32,6 +31,7 @@ export function ArtworkDetailPage() {
   const [addedToCart, setAddedToCart] = useState(false);
   const [saved, setSaved] = useState(false);
   const [downloading, setDownloading] = useState(false);
+  const [activeIdx, setActiveIdx] = useState(0);
 
   useEffect(() => {
     if (!uuid) return;
@@ -82,10 +82,16 @@ export function ArtworkDetailPage() {
   };
 
   const handleDownload = async () => {
-    if (!artwork?.image_url) return;
+    if (!artwork) return;
+    const imgs: string[] = [];
+    if (artwork.primary_image) imgs.push(artwork.primary_image);
+    artwork.images?.forEach(img => { if (img.image_url && img.image_url !== artwork.primary_image) imgs.push(img.image_url); });
+    if (imgs.length === 0 && artwork.image_url) imgs.push(artwork.image_url);
+    const src = imgs[activeIdx] ?? imgs[0] ?? artwork.image_url;
+    if (!src) return;
     setDownloading(true);
     try {
-      await downloadWithWatermark(artwork.image_url, artwork.name);
+      await downloadWithWatermark(src, artwork.name);
     } catch {
       error('Failed to download image');
     } finally {
@@ -123,6 +129,14 @@ export function ArtworkDetailPage() {
   const anyAuction = auctions[0];
   const year = artwork.created_at ? new Date(artwork.created_at).getFullYear() : null;
 
+  // Build ordered image list: primary first, then rest
+  const allImages: string[] = [];
+  if (artwork.primary_image) allImages.push(artwork.primary_image);
+  artwork.images?.forEach(img => { if (img.image_url && img.image_url !== artwork.primary_image) allImages.push(img.image_url); });
+  if (allImages.length === 0 && artwork.image_url) allImages.push(artwork.image_url);
+  const safeIdx = Math.min(activeIdx, Math.max(0, allImages.length - 1));
+  const activeImage = allImages[safeIdx] ?? null;
+
   return (
     <div className="min-h-screen bg-earth-50 dark:bg-earth-950">
       <Navbar />
@@ -141,14 +155,17 @@ export function ArtworkDetailPage() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-16 items-start">
 
-          {/* ── Left: Image ─────────────────────────────────────── */}
-          <div className="relative">
-            <div className="rounded-2xl overflow-hidden bg-earth-100 dark:bg-earth-800 shadow-lg aspect-[4/5] select-none">
-              {artwork.image_url ? (
-                <WatermarkedImage
-                  src={artwork.image_url}
+          {/* ── Left: Image Gallery ─────────────────────────────── */}
+          <div className="space-y-3">
+            {/* Main image */}
+            <div className="relative rounded-2xl overflow-hidden bg-earth-100 dark:bg-earth-800 shadow-lg aspect-[4/5] select-none">
+              {activeImage ? (
+                <img
+                  src={activeImage}
                   alt={artwork.name}
-                  className={`w-full h-full object-cover ${artwork.is_sold ? 'brightness-75' : ''}`}
+                  draggable={false}
+                  onContextMenu={e => e.preventDefault()}
+                  className={`w-full h-full object-cover pointer-events-none ${artwork.is_sold ? 'brightness-75' : ''}`}
                 />
               ) : (
                 <div className="w-full h-full flex items-center justify-center">
@@ -163,8 +180,26 @@ export function ArtworkDetailPage() {
                 </div>
               )}
 
-              {/* Download button — appears on hover over image */}
-              {artwork.image_url && (
+              {/* Prev / Next arrows */}
+              {allImages.length > 1 && (
+                <>
+                  <button
+                    onClick={() => setActiveIdx(i => (i - 1 + allImages.length) % allImages.length)}
+                    className="absolute left-3 top-1/2 -translate-y-1/2 bg-black/40 hover:bg-black/60 text-white rounded-full p-2 transition-all"
+                  >
+                    <ChevronLeft size={18} />
+                  </button>
+                  <button
+                    onClick={() => setActiveIdx(i => (i + 1) % allImages.length)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 bg-black/40 hover:bg-black/60 text-white rounded-full p-2 transition-all"
+                  >
+                    <ChevronRight size={18} />
+                  </button>
+                </>
+              )}
+
+              {/* Download button */}
+              {activeImage && (
                 <div className="absolute bottom-3 right-3">
                   <button
                     onClick={handleDownload}
@@ -177,12 +212,36 @@ export function ArtworkDetailPage() {
                   </button>
                 </div>
               )}
+
+              {/* Image counter */}
+              {allImages.length > 1 && (
+                <div className="absolute top-3 left-3 bg-black/50 text-white text-xs font-medium px-2 py-1 rounded-full">
+                  {safeIdx + 1} / {allImages.length}
+                </div>
+              )}
             </div>
+
+            {/* Thumbnail strip */}
+            {allImages.length > 1 && (
+              <div className="flex gap-2 overflow-x-auto pb-1">
+                {allImages.map((src, i) => (
+                  <button
+                    key={i}
+                    onClick={() => setActiveIdx(i)}
+                    className={`shrink-0 w-16 h-16 rounded-xl overflow-hidden border-2 transition-all ${
+                      safeIdx === i ? 'border-primary-500' : 'border-earth-200 hover:border-earth-300 dark:border-earth-700'
+                    }`}
+                  >
+                    <img src={src} alt={`${artwork.name} ${i + 1}`} className="w-full h-full object-cover" />
+                  </button>
+                ))}
+              </div>
+            )}
 
             {/* Back link below image on mobile */}
             <Link
               to="/artworks"
-              className="mt-4 inline-flex items-center gap-1.5 text-sm text-earth-400 hover:text-earth-600 dark:hover:text-earth-300 transition-colors lg:hidden"
+              className="inline-flex items-center gap-1.5 text-sm text-earth-400 hover:text-earth-600 dark:hover:text-earth-300 transition-colors lg:hidden"
             >
               <ArrowLeft size={14} /> Back to Gallery
             </Link>

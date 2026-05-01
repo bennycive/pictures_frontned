@@ -38,8 +38,8 @@ export function Modal({ open, onClose, title, children, size = 'md', branded = f
           </div>
         )}
 
-        {/* Body — only this part scrolls, invisibly */}
-        <div className="p-6 overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        {/* Body — scrolls when content overflows */}
+        <div className="flex-1 min-h-0 p-6 overflow-y-auto">
           {children}
         </div>
       </div>

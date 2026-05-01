@@ -207,9 +207,9 @@ export function ArtworksPage() {
                   {artworks.map(artwork => (
                     <div key={artwork.uuid} className="bg-white rounded-xl overflow-hidden border border-earth-100 hover:shadow-md transition-shadow group">
                       <Link to={`/artworks/${artwork.uuid}`} className="relative block aspect-[4/3] overflow-hidden bg-earth-100">
-                        {artwork.image_url ? (
+                        {(artwork.primary_image || artwork.image_url) ? (
                           <img
-                            src={artwork.image_url}
+                            src={artwork.primary_image || artwork.image_url}
                             alt={artwork.name}
                             draggable={false}
                             onContextMenu={e => e.preventDefault()}
@@ -225,6 +225,12 @@ export function ArtworksPage() {
                             <div className="border-4 border-red-500 rounded-lg px-4 py-1.5 rotate-[-18deg]">
                               <span className="text-red-500 font-display font-extrabold text-2xl tracking-widest uppercase">Sold</span>
                             </div>
+                          </div>
+                        )}
+                        {(artwork.images?.length ?? 0) > 1 && (
+                          <div className="absolute top-2 right-2 flex items-center gap-1 bg-black/55 text-white text-[11px] font-semibold px-2 py-0.5 rounded-full">
+                            <Image size={11} />
+                            {artwork.images.length}
                           </div>
                         )}
                       </Link>

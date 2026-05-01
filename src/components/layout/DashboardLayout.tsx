@@ -247,25 +247,30 @@ interface NavItem {
 }
 
 const navItems: NavItem[] = [
-  { label: 'Overview',       icon: LayoutDashboard, to: '/dashboard' },
-  { label: 'Artworks',       icon: Image,           to: '/dashboard/artworks',      permission: 'artworks.view_artwork' },
-  { label: 'Categories',     icon: Tag,             to: '/dashboard/categories',    permission: 'artworks.view_category' },
-  { label: 'Currencies',     icon: DollarSign,      to: '/dashboard/currencies',    permission: 'currencies.view_currency' },
-  { label: 'Auctions',       icon: Gavel,           to: '/dashboard/auctions',      permission: 'auctions.view_auction' },
+  // ── Always visible ─────────────────────────────────────────────────────────
+  { label: 'Overview', icon: LayoutDashboard, to: '/dashboard' },
+  { label: 'Cart',     icon: ShoppingBag,     to: '/dashboard/cart' },
+  { label: 'Profile',  icon: User,            to: '/dashboard/profile' },
+
+  // ── Permission-gated — visible when the user's role grants the permission ──
+  { label: 'Artworks',       icon: Image,           to: '/dashboard/artworks',       permission: 'artworks.view_artwork' },
+  { label: 'Categories',     icon: Tag,             to: '/dashboard/categories',     permission: 'artworks.view_category' },
+  { label: 'Currencies',     icon: DollarSign,      to: '/dashboard/currencies',     permission: 'currencies.view_currency' },
+  { label: 'Auctions',       icon: Gavel,           to: '/dashboard/auctions',       permission: 'auctions.view_auction' },
   { label: 'Auction Config', icon: SlidersHorizontal, to: '/dashboard/auction-config', permission: 'auctions.change_auctionconfig' },
-  { label: 'Payments',       icon: CreditCard,      to: '/dashboard/payments',      adminOnly: true },
-  { label: 'Orders',         icon: Package,         to: '/dashboard/orders',        permission: 'orders.view_order' },
-  { label: 'Cart',           icon: ShoppingBag,     to: '/dashboard/cart' },
-  { label: 'Wallet',         icon: Wallet,          to: '/dashboard/wallet',        permission: 'wallet.view_wallet' },
-  { label: 'Profile',        icon: User,            to: '/dashboard/profile' },
-  { label: 'Activity Logs',  icon: ClipboardList,   to: '/dashboard/activity-logs', permission: 'activity_logs.view_activitylog' },
-  { label: 'Roles',          icon: Shield,          to: '/dashboard/roles',         adminOnly: true },
-  { label: 'Users',          icon: Users,           to: '/dashboard/users',         permission: 'accounts.view_user' },
-  { label: 'Messages',       icon: Inbox,           to: '/dashboard/messages',      permission: 'site_config.view_contactmessage' },
-  { label: 'Site Config',    icon: Settings2,       to: '/dashboard/site-config',   adminOnly: true },
-  { label: 'Reports',        icon: BarChart2,       to: '/dashboard/reports',       permission: 'accounts.view_analytics' },
-  { label: 'Performance',    icon: Activity,        to: '/dashboard/performance',   permission: 'security.view_requestlog' },
-  { label: 'Notifications',  icon: Bell,            to: '/dashboard/notifications', permission: 'notifications.view_notificationlog' },
+  { label: 'Orders',         icon: Package,         to: '/dashboard/orders',         permission: 'orders.view_order' },
+  { label: 'Wallet',         icon: Wallet,          to: '/dashboard/wallet',         permission: 'wallet.view_wallet' },
+  { label: 'Activity Logs',  icon: ClipboardList,   to: '/dashboard/activity-logs',  permission: 'activity_logs.view_activitylog' },
+  { label: 'Users',          icon: Users,           to: '/dashboard/users',          permission: 'accounts.view_user' },
+  { label: 'Messages',       icon: Inbox,           to: '/dashboard/messages',       permission: 'site_config.view_contactmessage' },
+  { label: 'Reports',        icon: BarChart2,       to: '/dashboard/reports',        permission: 'accounts.view_analytics' },
+  { label: 'Performance',    icon: Activity,        to: '/dashboard/performance',    permission: 'security.view_requestlog' },
+  { label: 'Notifications',  icon: Bell,            to: '/dashboard/notifications',  permission: 'notifications.view_notificationlog' },
+
+  // ── Hard admin-only — never delegatable via role permissions ───────────────
+  { label: 'Payments',    icon: CreditCard, to: '/dashboard/payments',    adminOnly: true },
+  { label: 'Roles',       icon: Shield,     to: '/dashboard/roles',       adminOnly: true },
+  { label: 'Site Config', icon: Settings2,  to: '/dashboard/site-config', adminOnly: true },
 ];
 
 export function DashboardLayout({ children }: { children: React.ReactNode }) {

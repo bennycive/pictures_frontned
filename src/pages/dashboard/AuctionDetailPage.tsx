@@ -1,21 +1,83 @@
 import { useEffect, useState, useCallback, memo } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { ArrowLeft, Gavel, TrendingUp, Clock, Play, Square, Image, Wifi, WifiOff } from 'lucide-react';
+import { ArrowLeft, Gavel, TrendingUp, Clock, Play, Square, Image, Wifi, WifiOff, ChevronLeft, ChevronRight, Star } from 'lucide-react';
 import { auctionsApi } from '../../api';
 import type { Auction } from '../../api/types';
 import { StatusBadge } from '../../components/ui/Badge';
 
-type AuctionBase = Pick<Auction, 'uuid' | 'artwork_uuid' | 'artwork_name' | 'artwork_image' | 'created_by_name' | 'start_time' | 'end_time' | 'bid_increment' | 'start_price' | 'currency'>;
+type AuctionBase = Pick<Auction,
+  'uuid' | 'artwork_uuid' | 'artwork_name' | 'artwork_image' |
+  'images' | 'primary_image' |
+  'created_by_name' | 'start_time' | 'end_time' | 'bid_increment' | 'start_price' | 'currency'
+>;
 type AuctionLive = Pick<Auction, 'status' | 'current_price' | 'minimum_next_bid' | 'total_bids' | 'top_bids' | 'winner_name'>;
 
-const AuctionImage = memo(function AuctionImage({ base }: { base: AuctionBase }) {
-  return (
-    <div className="bg-white rounded-xl border border-earth-100 overflow-hidden">
-      {base.artwork_image ? (
-        <img src={base.artwork_image} alt={base.artwork_name} className="w-full aspect-square object-cover" />
-      ) : (
+const AuctionGallery = memo(function AuctionGallery({ base }: { base: AuctionBase }) {
+  const allImages: string[] = [];
+  if (base.primary_image) allImages.push(base.primary_image);
+  base.images.forEach(img => {
+    if (img.image_url && img.image_url !== base.primary_image) allImages.push(img.image_url);
+  });
+  if (allImages.length === 0 && base.artwork_image) allImages.push(base.artwork_image);
+
+  const [active, setActive] = useState(0);
+  const prev = () => setActive(i => (i - 1 + allImages.length) % allImages.length);
+  const next = () => setActive(i => (i + 1) % allImages.length);
+
+  if (allImages.length === 0) {
+    return (
+      <div className="bg-white rounded-xl border border-earth-100 overflow-hidden">
         <div className="w-full aspect-square bg-earth-100 flex items-center justify-center">
           <Image size={60} className="text-earth-300" />
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-3">
+      <div className="relative bg-white rounded-xl border border-earth-100 overflow-hidden group">
+        <img
+          src={allImages[active]}
+          alt={`${base.artwork_name} — ${active + 1}`}
+          className="w-full aspect-square object-cover"
+        />
+        {allImages.length > 1 && (
+          <>
+            <button onClick={prev}
+              className="absolute left-2 top-1/2 -translate-y-1/2 bg-white/80 hover:bg-white border border-earth-100 rounded-full p-1.5 shadow opacity-0 group-hover:opacity-100 transition-opacity">
+              <ChevronLeft size={16} className="text-earth-700" />
+            </button>
+            <button onClick={next}
+              className="absolute right-2 top-1/2 -translate-y-1/2 bg-white/80 hover:bg-white border border-earth-100 rounded-full p-1.5 shadow opacity-0 group-hover:opacity-100 transition-opacity">
+              <ChevronRight size={16} className="text-earth-700" />
+            </button>
+            <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-1">
+              {allImages.map((_, i) => (
+                <button key={i} onClick={() => setActive(i)}
+                  className={`w-1.5 h-1.5 rounded-full transition-colors ${i === active ? 'bg-white' : 'bg-white/50'}`} />
+              ))}
+            </div>
+          </>
+        )}
+        {/* Primary badge on first image */}
+        {active === 0 && base.images.some(img => img.is_primary) && (
+          <div className="absolute top-2 left-2 bg-primary-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1">
+            <Star size={9} fill="currentColor" /> Primary
+          </div>
+        )}
+      </div>
+
+      {allImages.length > 1 && (
+        <div className="flex gap-2 overflow-x-auto pb-1">
+          {allImages.map((src, i) => (
+            <button key={i} onClick={() => setActive(i)}
+              className={`shrink-0 w-14 h-14 rounded-lg overflow-hidden border-2 transition-colors ${
+                i === active ? 'border-primary-500' : 'border-earth-100 hover:border-earth-300'
+              }`}>
+              <img src={src} alt="" className="w-full h-full object-cover" />
+            </button>
+          ))}
         </div>
       )}
     </div>
@@ -47,7 +109,7 @@ export function AuctionDetailPage() {
   const canManage = hasPermission('auctions.change_auction');
 
   const splitAndSet = useCallback((data: Auction) => {
-    setBase({ uuid: data.uuid, artwork_uuid: data.artwork_uuid, artwork_name: data.artwork_name, artwork_image: data.artwork_image, created_by_name: data.created_by_name, start_time: data.start_time, end_time: data.end_time, bid_increment: data.bid_increment, start_price: data.start_price, currency: data.currency });
+    setBase({ uuid: data.uuid, artwork_uuid: data.artwork_uuid, artwork_name: data.artwork_name, artwork_image: data.artwork_image, images: data.images ?? [], primary_image: data.primary_image ?? null, created_by_name: data.created_by_name, start_time: data.start_time, end_time: data.end_time, bid_increment: data.bid_increment, start_price: data.start_price, currency: data.currency });
     setLive({ status: data.status, current_price: data.current_price, minimum_next_bid: data.minimum_next_bid, total_bids: data.total_bids, top_bids: data.top_bids, winner_name: data.winner_name });
     setBidAmount(data.minimum_next_bid);
   }, []);
@@ -153,8 +215,8 @@ export function AuctionDetailPage() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Static image — memo'd, never re-renders on bid updates */}
-        <AuctionImage base={base} />
+        {/* Image gallery — memo'd, never re-renders on bid updates */}
+        <AuctionGallery base={base} />
 
         {/* Info */}
         <div className="space-y-4">

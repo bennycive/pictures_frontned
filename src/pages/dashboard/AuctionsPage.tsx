@@ -1,11 +1,12 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   Plus, Play, Square, Eye, TrendingUp, Clock, Pencil, Trash2,
   Gavel, Check, AlarmClock, CalendarClock, Image as ImageIcon,
+  Upload, X, Star,
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { auctionsApi, artworksApi } from '../../api';
-import type { Auction, Artwork } from '../../api/types';
+import type { Auction, AuctionImage, Artwork } from '../../api/types';
 import { Modal } from '../../components/ui/Modal';
 import { StatusBadge } from '../../components/ui/Badge';
 import { useToast } from '../../components/ui/Toast';
@@ -60,6 +61,8 @@ interface ExtendForm { end_time: string; bid_increment: string }
 
 type FilterStatus = 'all' | 'pending' | 'live' | 'ended';
 
+interface PendingFile { file: File; preview: string; isPrimary: boolean }
+
 const EMPTY_FORM: AuctionForm = {
   artwork_uuid: '', start_price: '', reserve_price: '',
   bid_increment: '1.00', currency: 'USD', start_time: '', end_time: '',
@@ -73,37 +76,248 @@ function defaultTimes() {
   };
 }
 
+// ── Image Manager Component ────────────────────────────────────────────────────
+
+function ImageManager({
+  auctionUuid,
+  existing,
+  onChanged,
+}: {
+  auctionUuid: string;
+  existing: AuctionImage[];
+  onChanged: (images: AuctionImage[]) => void;
+}) {
+  const { error, success } = useToast();
+  const fileRef = useRef<HTMLInputElement>(null);
+  const [images, setImages] = useState<AuctionImage[]>(existing);
+  const [uploading, setUploading] = useState(false);
+
+  const syncUp = (next: AuctionImage[]) => { setImages(next); onChanged(next); };
+
+  const handleFiles = async (files: FileList | null) => {
+    if (!files || files.length === 0) return;
+    setUploading(true);
+    const updated = [...images];
+    for (const file of Array.from(files)) {
+      const fd = new FormData();
+      fd.append('image', file);
+      if (updated.length === 0) fd.append('is_primary', 'true');
+      try {
+        const { data } = await auctionsApi.uploadImage(auctionUuid, fd);
+        updated.push(data);
+      } catch {
+        error(`Failed to upload ${file.name}`);
+      }
+    }
+    syncUp(updated);
+    setUploading(false);
+    success('Images uploaded');
+  };
+
+  const handleDelete = async (img: AuctionImage) => {
+    const ok = await swal.confirmDelete('Delete this image?');
+    if (!ok) return;
+    try {
+      await auctionsApi.deleteImage(auctionUuid, img.id);
+      syncUp(images.filter(i => i.id !== img.id));
+    } catch { error('Failed to delete image'); }
+  };
+
+  const handleSetPrimary = async (img: AuctionImage) => {
+    try {
+      await auctionsApi.setPrimaryImage(auctionUuid, img.id);
+      syncUp(images.map(i => ({ ...i, is_primary: i.id === img.id })));
+    } catch { error('Failed to set primary image'); }
+  };
+
+  return (
+    <div className="space-y-3">
+      {/* Existing images grid */}
+      {images.length > 0 && (
+        <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
+          {images.map(img => (
+            <div key={img.id} className={`relative group rounded-xl overflow-hidden border-2 ${img.is_primary ? 'border-primary-500' : 'border-earth-100'}`}>
+              <img
+                src={img.image_url ?? ''}
+                alt="auction"
+                className="w-full aspect-square object-cover"
+              />
+              {/* Primary badge */}
+              {img.is_primary && (
+                <div className="absolute top-1 left-1 bg-primary-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full flex items-center gap-0.5">
+                  <Star size={9} fill="currentColor" /> Primary
+                </div>
+              )}
+              {/* Hover actions */}
+              <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-1.5">
+                {!img.is_primary && (
+                  <button
+                    type="button"
+                    onClick={() => handleSetPrimary(img)}
+                    className="bg-white text-earth-800 text-[10px] font-semibold px-2 py-1 rounded-lg hover:bg-primary-50 hover:text-primary-700 transition-colors flex items-center gap-1"
+                    title="Set as primary"
+                  >
+                    <Star size={10} /> Primary
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={() => handleDelete(img)}
+                  className="bg-white text-red-500 hover:bg-red-50 p-1.5 rounded-lg transition-colors"
+                  title="Delete"
+                >
+                  <X size={12} />
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Upload drop zone */}
+      <div
+        className="border-2 border-dashed border-earth-200 rounded-xl p-4 text-center cursor-pointer hover:border-primary-300 hover:bg-primary-50/30 transition-colors"
+        onClick={() => fileRef.current?.click()}
+        onDragOver={e => e.preventDefault()}
+        onDrop={e => { e.preventDefault(); handleFiles(e.dataTransfer.files); }}
+      >
+        {uploading ? (
+          <div className="flex items-center justify-center gap-2 text-primary-600">
+            <Spinner size="sm" /> Uploading…
+          </div>
+        ) : (
+          <>
+            <Upload size={20} className="text-earth-300 mx-auto mb-1" />
+            <p className="text-xs text-earth-500 font-medium">Click or drag to add images</p>
+            <p className="text-[10px] text-earth-400 mt-0.5">First image auto-becomes primary</p>
+          </>
+        )}
+      </div>
+      <input
+        ref={fileRef}
+        type="file"
+        accept="image/*"
+        multiple
+        className="hidden"
+        onChange={e => handleFiles(e.target.files)}
+      />
+    </div>
+  );
+}
+
+// ── Pending Images Picker (for new auctions before UUID exists) ────────────────
+
+function PendingImagePicker({
+  files,
+  onChange,
+}: {
+  files: PendingFile[];
+  onChange: (files: PendingFile[]) => void;
+}) {
+  const fileRef = useRef<HTMLInputElement>(null);
+
+  const addFiles = (list: FileList | null) => {
+    if (!list) return;
+    const newFiles: PendingFile[] = Array.from(list).map((file, idx) => ({
+      file,
+      preview: URL.createObjectURL(file),
+      isPrimary: files.length === 0 && idx === 0,
+    }));
+    const updated = [...files, ...newFiles];
+    if (!updated.some(f => f.isPrimary) && updated.length > 0) updated[0].isPrimary = true;
+    onChange(updated);
+  };
+
+  const remove = (idx: number) => {
+    const updated = files.filter((_, i) => i !== idx);
+    if (updated.length > 0 && !updated.some(f => f.isPrimary)) updated[0].isPrimary = true;
+    onChange(updated);
+  };
+
+  const setPrimary = (idx: number) => {
+    onChange(files.map((f, i) => ({ ...f, isPrimary: i === idx })));
+  };
+
+  return (
+    <div className="space-y-3">
+      <label className="block text-xs font-semibold text-earth-500 uppercase tracking-wide">
+        Images <span className="text-earth-400 normal-case font-normal">(optional — upload after creating)</span>
+      </label>
+
+      {files.length > 0 && (
+        <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
+          {files.map((f, i) => (
+            <div key={i} className={`relative group rounded-xl overflow-hidden border-2 ${f.isPrimary ? 'border-primary-500' : 'border-earth-100'}`}>
+              <img src={f.preview} alt="" className="w-full aspect-square object-cover" />
+              {f.isPrimary && (
+                <div className="absolute top-1 left-1 bg-primary-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full flex items-center gap-0.5">
+                  <Star size={9} fill="currentColor" /> Primary
+                </div>
+              )}
+              <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-1.5">
+                {!f.isPrimary && (
+                  <button type="button" onClick={() => setPrimary(i)}
+                    className="bg-white text-earth-800 text-[10px] font-semibold px-2 py-1 rounded-lg hover:bg-primary-50 hover:text-primary-700 transition-colors flex items-center gap-1">
+                    <Star size={10} /> Primary
+                  </button>
+                )}
+                <button type="button" onClick={() => remove(i)}
+                  className="bg-white text-red-500 hover:bg-red-50 p-1.5 rounded-lg transition-colors">
+                  <X size={12} />
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <div
+        className="border-2 border-dashed border-earth-200 rounded-xl p-4 text-center cursor-pointer hover:border-primary-300 hover:bg-primary-50/30 transition-colors"
+        onClick={() => fileRef.current?.click()}
+        onDragOver={e => e.preventDefault()}
+        onDrop={e => { e.preventDefault(); addFiles(e.dataTransfer.files); }}
+      >
+        <Upload size={20} className="text-earth-300 mx-auto mb-1" />
+        <p className="text-xs text-earth-500 font-medium">Click or drag images here</p>
+        <p className="text-[10px] text-earth-400 mt-0.5">Multiple images supported · First is primary</p>
+      </div>
+      <input ref={fileRef} type="file" accept="image/*" multiple className="hidden"
+        onChange={e => addFiles(e.target.files)} />
+    </div>
+  );
+}
+
 // ── Page ───────────────────────────────────────────────────────────────────────
 
 export function AuctionsPage() {
   const { hasPermission } = useAuth();
   const { error, success } = useToast();
 
-  const [auctions, setAuctions]           = useState<Auction[]>([]);
-  const [artworks, setArtworks]           = useState<Artwork[]>([]);
-  const [loading, setLoading]             = useState(true);
-  const [filter, setFilter]               = useState<FilterStatus>('all');
-  const [modalOpen, setModalOpen]         = useState(false);
-  const [extendOpen, setExtendOpen]       = useState(false);
-  const [editTarget, setEditTarget]       = useState<Auction | null>(null);
-  const [extendTarget, setExtendTarget]   = useState<Auction | null>(null);
-  const [form, setForm]                   = useState<AuctionForm>(EMPTY_FORM);
-  const [extendForm, setExtendForm]       = useState<ExtendForm>({ end_time: '', bid_increment: '' });
-  const [saving, setSaving]               = useState(false);
+  const [auctions, setAuctions]             = useState<Auction[]>([]);
+  const [artworks, setArtworks]             = useState<Artwork[]>([]);
+  const [loading, setLoading]               = useState(true);
+  const [filter, setFilter]                 = useState<FilterStatus>('all');
+  const [modalOpen, setModalOpen]           = useState(false);
+  const [extendOpen, setExtendOpen]         = useState(false);
+  const [imagesOpen, setImagesOpen]         = useState(false);
+  const [editTarget, setEditTarget]         = useState<Auction | null>(null);
+  const [extendTarget, setExtendTarget]     = useState<Auction | null>(null);
+  const [imagesTarget, setImagesTarget]     = useState<Auction | null>(null);
+  const [form, setForm]                     = useState<AuctionForm>(EMPTY_FORM);
+  const [extendForm, setExtendForm]         = useState<ExtendForm>({ end_time: '', bid_increment: '' });
+  const [pendingFiles, setPendingFiles]     = useState<PendingFile[]>([]);
+  const [saving, setSaving]                 = useState(false);
 
   const canCreate = hasPermission('auctions.add_auction');
   const canManage = hasPermission('auctions.change_auction');
   const canDelete = hasPermission('auctions.delete_auction');
 
-  // UUIDs of artworks that already have a pending or live auction
   const auctionedUuids = new Set(
     auctions
       .filter(a => a.status === 'pending' || a.status === 'live')
       .map(a => a.artwork_uuid)
   );
   const availableArtworks = artworks.filter(a => !auctionedUuids.has(a.uuid));
-
-  // Artwork currently selected in the create form
   const selectedArtwork = artworks.find(a => a.uuid === form.artwork_uuid) ?? null;
 
   const load = async () => {
@@ -124,12 +338,14 @@ export function AuctionsPage() {
   const openCreate = () => {
     const t = defaultTimes();
     setEditTarget(null);
+    setPendingFiles([]);
     setForm({ ...EMPTY_FORM, artwork_uuid: artworks[0]?.uuid || '', start_time: t.start, end_time: t.end });
     setModalOpen(true);
   };
 
   const openEdit = (a: Auction) => {
     setEditTarget(a);
+    setPendingFiles([]);
     setForm({
       artwork_uuid:  String(a.artwork_uuid),
       start_price:   String(a.start_price),
@@ -148,19 +364,45 @@ export function AuctionsPage() {
     setExtendOpen(true);
   };
 
+  const openImages = (a: Auction) => {
+    setImagesTarget(a);
+    setImagesOpen(true);
+  };
+
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true);
     try {
       const payload = { ...form, reserve_price: form.reserve_price || null };
-      if (editTarget) { await auctionsApi.update(editTarget.uuid, payload as Record<string, unknown>); success('Auction updated!'); }
-      else            { await auctionsApi.create(payload as Record<string, unknown>); success('Auction created!'); }
+      if (editTarget) {
+        await auctionsApi.update(editTarget.uuid, payload as Record<string, unknown>);
+        success('Auction updated!');
+        // Upload any new pending images for edit
+        if (pendingFiles.length > 0) {
+          await uploadFilesToAuction(editTarget.uuid, pendingFiles);
+        }
+      } else {
+        const { data: created } = await auctionsApi.create(payload as Record<string, unknown>);
+        if (pendingFiles.length > 0) {
+          await uploadFilesToAuction(created.uuid, pendingFiles);
+        }
+        success('Auction created!');
+      }
       setModalOpen(false);
       load();
     } catch (err: unknown) {
       const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
       error(msg || (editTarget ? 'Failed to update auction' : 'Failed to create auction'));
     } finally { setSaving(false); }
+  };
+
+  const uploadFilesToAuction = async (uuid: string, files: PendingFile[]) => {
+    for (const { file, isPrimary } of files) {
+      const fd = new FormData();
+      fd.append('image', file);
+      fd.append('is_primary', isPrimary ? 'true' : 'false');
+      await auctionsApi.uploadImage(uuid, fd);
+    }
   };
 
   const handleExtend = async (e: React.FormEvent) => {
@@ -180,14 +422,14 @@ export function AuctionsPage() {
   };
 
   const handleStart = async (a: Auction) => {
-    const ok = await swal.confirm(`Start auction for "${a.artwork_name}"? It will go live immediately.`);
+    const ok = await swal.confirm({ title: `Start "${a.artwork_name}"?`, text: 'It will go live immediately.' });
     if (!ok) return;
     try { await auctionsApi.start(a.uuid); success('Auction started!'); load(); }
     catch { error('Failed to start auction'); }
   };
 
   const handleEnd = async (a: Auction) => {
-    const ok = await swal.confirm(`End auction for "${a.artwork_name}"? This will close bidding.`, true);
+    const ok = await swal.confirm({ title: `End "${a.artwork_name}"?`, text: 'This will close bidding.', danger: true });
     if (!ok) return;
     try { await auctionsApi.end(a.uuid); success('Auction ended!'); load(); }
     catch { error('Failed to end auction'); }
@@ -212,6 +454,9 @@ export function AuctionsPage() {
 
   const sf = (k: keyof AuctionForm) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
     setForm(prev => ({ ...prev, [k]: e.target.value }));
+
+  // thumbnail: prefer primary_image, fallback to artwork_image
+  const thumb = (a: Auction) => a.primary_image || a.artwork_image || null;
 
   return (
     <div className="space-y-6">
@@ -276,10 +521,18 @@ export function AuctionsPage() {
                   <tr key={a.uuid} className={`hover:bg-earth-50 transition-colors ${a.status === 'live' ? 'bg-green-50/30' : ''}`}>
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-lg overflow-hidden bg-earth-100 shrink-0 border border-earth-200">
-                          {a.artwork_image
-                            ? <img src={a.artwork_image} alt="" className="w-full h-full object-cover" />
-                            : <div className="w-full h-full flex items-center justify-center"><Gavel size={14} className="text-earth-300" /></div>}
+                        {/* Thumbnail — stacked if multiple images */}
+                        <div className="relative shrink-0">
+                          <div className="w-10 h-10 rounded-lg overflow-hidden bg-earth-100 border border-earth-200">
+                            {thumb(a)
+                              ? <img src={thumb(a)!} alt="" className="w-full h-full object-cover" />
+                              : <div className="w-full h-full flex items-center justify-center"><Gavel size={14} className="text-earth-300" /></div>}
+                          </div>
+                          {a.images && a.images.length > 1 && (
+                            <span className="absolute -bottom-1 -right-1 bg-primary-500 text-white text-[9px] font-bold w-4 h-4 rounded-full flex items-center justify-center border border-white">
+                              {a.images.length}
+                            </span>
+                          )}
                         </div>
                         <div className="min-w-0">
                           <p className="font-semibold text-earth-900 truncate max-w-[160px]">{a.artwork_name}</p>
@@ -317,6 +570,13 @@ export function AuctionsPage() {
                           className="p-1.5 hover:bg-earth-100 rounded-lg transition-colors" title="View">
                           <Eye size={14} className="text-earth-500" />
                         </Link>
+                        {/* Images button */}
+                        {canManage && (
+                          <button onClick={() => openImages(a)}
+                            className="p-1.5 hover:bg-blue-50 rounded-lg transition-colors" title="Manage Images">
+                            <ImageIcon size={14} className="text-blue-500" />
+                          </button>
+                        )}
                         {canManage && a.status === 'pending' && (
                           <>
                             <button onClick={() => openEdit(a)} className="p-1.5 hover:bg-earth-100 rounded-lg transition-colors" title="Edit">
@@ -392,7 +652,6 @@ export function AuctionsPage() {
                 }
               </select>
 
-              {/* Artwork preview */}
               {selectedArtwork ? (
                 <div className="flex items-center gap-4 p-3 bg-earth-50 rounded-xl border border-earth-100">
                   <div className="w-20 h-20 rounded-xl overflow-hidden bg-earth-200 shrink-0 border border-earth-200">
@@ -426,14 +685,17 @@ export function AuctionsPage() {
           ) : (
             <div className="flex items-center gap-4 bg-earth-50 rounded-xl p-3 border border-earth-100">
               <div className="w-16 h-16 rounded-xl overflow-hidden bg-earth-100 shrink-0 border border-earth-200">
-                {editTarget.artwork_image
-                  ? <img src={editTarget.artwork_image} alt="" className="w-full h-full object-cover" />
+                {(editTarget.primary_image || editTarget.artwork_image)
+                  ? <img src={editTarget.primary_image || editTarget.artwork_image} alt="" className="w-full h-full object-cover" />
                   : <div className="w-full h-full flex items-center justify-center"><ImageIcon size={20} className="text-earth-300" /></div>
                 }
               </div>
               <div>
                 <p className="text-xs text-earth-400 font-semibold uppercase tracking-wide">Artwork</p>
                 <p className="font-semibold text-earth-900">{editTarget.artwork_name}</p>
+                {editTarget.images && editTarget.images.length > 0 && (
+                  <p className="text-xs text-earth-500 mt-0.5">{editTarget.images.length} image{editTarget.images.length !== 1 ? 's' : ''}</p>
+                )}
               </div>
             </div>
           )}
@@ -494,11 +756,56 @@ export function AuctionsPage() {
             </div>
           </div>
 
+          {/* Images section */}
+          {!editTarget ? (
+            /* Create: pick files before the auction exists */
+            <PendingImagePicker files={pendingFiles} onChange={setPendingFiles} />
+          ) : (
+            /* Edit: live image manager against existing auction */
+            <div className="space-y-2">
+              <label className="block text-xs font-semibold text-earth-500 uppercase tracking-wide">
+                Images
+              </label>
+              <ImageManager
+                auctionUuid={editTarget.uuid}
+                existing={editTarget.images ?? []}
+                onChanged={imgs => {
+                  setAuctions(prev =>
+                    prev.map(a => a.uuid === editTarget.uuid ? { ...a, images: imgs, primary_image: imgs.find(i => i.is_primary)?.image_url ?? a.primary_image } : a)
+                  );
+                }}
+              />
+            </div>
+          )}
+
           <button type="submit" disabled={saving} className="btn-primary w-full flex items-center justify-center gap-2">
             {saving ? <Spinner size="sm" /> : <Check size={15} />}
-            {saving ? 'Saving…' : editTarget ? 'Save Changes' : 'Create Auction'}
+            {saving ? (pendingFiles.length > 0 ? 'Creating & uploading images…' : 'Saving…') : editTarget ? 'Save Changes' : 'Create Auction'}
           </button>
         </form>
+      </Modal>
+
+      {/* ── Dedicated Image Manager modal ───────────────────────────────────── */}
+      <Modal
+        open={imagesOpen}
+        onClose={() => { setImagesOpen(false); setImagesTarget(null); load(); }}
+        title={`Images — ${imagesTarget?.artwork_name ?? ''}`}
+        size="md"
+      >
+        {imagesTarget && (
+          <ImageManager
+            auctionUuid={imagesTarget.uuid}
+            existing={imagesTarget.images ?? []}
+            onChanged={imgs => {
+              setAuctions(prev =>
+                prev.map(a => a.uuid === imagesTarget.uuid
+                  ? { ...a, images: imgs, primary_image: imgs.find(i => i.is_primary)?.image_url ?? a.primary_image }
+                  : a
+                )
+              );
+            }}
+          />
+        )}
       </Modal>
 
       {/* ── Extend Live Auction modal ────────────────────────────────────────── */}

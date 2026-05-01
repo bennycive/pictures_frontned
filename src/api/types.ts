@@ -32,6 +32,14 @@ export interface ArtworkPricing {
   formatted: string;
 }
 
+export interface ArtworkImage {
+  id: number;
+  image_url: string | null;
+  is_primary: boolean;
+  order: number;
+  created_at: string;
+}
+
 export interface Artwork {
   uuid: string;
   name: string;
@@ -39,7 +47,17 @@ export interface Artwork {
   category: Category;
   pricing: ArtworkPricing | null;
   image_url: string;
+  images: ArtworkImage[];
+  primary_image: string | null;
   is_sold: boolean;
+  created_at: string;
+}
+
+export interface AuctionImage {
+  id: number;
+  image_url: string | null;
+  is_primary: boolean;
+  order: number;
   created_at: string;
 }
 
@@ -48,6 +66,8 @@ export interface Auction {
   artwork_uuid: string;
   artwork_name: string;
   artwork_image: string;
+  images: AuctionImage[];
+  primary_image: string | null;
   created_by_name: string;
   start_price: string;
   reserve_price: string | null;
@@ -215,6 +235,14 @@ export interface OrderItem {
   currency: string;
 }
 
+export interface OrderStatusHistory {
+  id: number;
+  status: 'pending' | 'confirmed' | 'shipped' | 'delivered' | 'cancelled';
+  note: string;
+  changed_by_name: string | null;
+  created_at: string;
+}
+
 export interface Order {
   uuid: string;
   status: 'pending' | 'confirmed' | 'shipped' | 'delivered' | 'cancelled';
@@ -222,6 +250,7 @@ export interface Order {
   currency: string;
   payment_channel: string;
   items: OrderItem[];
+  status_history: OrderStatusHistory[];
   delivery_name: string;
   delivery_phone: string;
   delivery_address: string;
@@ -229,6 +258,7 @@ export interface Order {
   delivery_country: string;
   notes: string;
   created_at: string;
+  updated_at: string;
   buyer_uuid?: string;
   buyer_name?: string;
   buyer_email?: string;
