@@ -114,8 +114,12 @@ export const auctionWinnersApi = {
 // Auction Violations (admin)
 export const auctionViolationsApi = {
   list: () => api.get<AuctionViolation[]>('/api/auctions/violations/'),
-  reviewBan: (id: number) =>
-    api.post<{ user: string; total_violations: number; bidding_suspended: boolean; max_violations: number }>(
+  banUser: (id: number) =>
+    api.post<{ user: string; total_violations: number; bidding_banned_until: string }>(
+      `/api/auctions/violations/${id}/ban/`
+    ),
+  unbanUser: (id: number) =>
+    api.delete<{ user: string; bidding_banned_until: null }>(
       `/api/auctions/violations/${id}/ban/`
     ),
 };
@@ -198,6 +202,8 @@ export const adminUsersApi = {
     api.post<AdminUser>(`/api/admin/users/${uuid}/verify/`),
   unverifyUser: (uuid: string) =>
     api.delete<AdminUser>(`/api/admin/users/${uuid}/verify/`),
+  setDirectPermissions: (uuid: string, permission_ids: number[]) =>
+    api.put<AdminUser>(`/api/admin/users/${uuid}/permissions/`, { permission_ids }),
 };
 
 // Reports (admin-only)

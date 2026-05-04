@@ -364,36 +364,65 @@ function WinnersPanel({ canMarkPaid }: { canMarkPaid: boolean }) {
 
 // ── Violations Table ───────────────────────────────────────────────────────────
 
+function isBanned(bannedUntil: string | null): boolean {
+  if (!bannedUntil) return false;
+  return new Date(bannedUntil) > new Date();
+}
+
 function ViolationsPanel({ canReview }: { canReview: boolean }) {
-  const { info, error } = useToast();
+  const { success, error } = useToast();
   const [violations, setViolations] = useState<AuctionViolation[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
-  const [reviewing, setReviewing] = useState<number | null>(null);
-  const [banResult, setBanResult] = useState<Record<number, { suspended: boolean; total: number; max: number }>>({});
+  const [actioning, setActioning] = useState<number | null>(null);
 
-  useEffect(() => {
-    auctionViolationsApi.list().then(r => {
-      setViolations(r.data);
-      setLoading(false);
-    });
-  }, []);
-
-  async function reviewBan(id: number) {
-    setReviewing(id);
+  async function load() {
+    setLoading(true);
     try {
-      const res = await auctionViolationsApi.reviewBan(id);
-      const { total_violations: total, bidding_suspended: suspended, max_violations: max } = res.data;
-      setBanResult(prev => ({ ...prev, [id]: { suspended, total, max } }));
-      if (suspended) {
-        error(`User suspended — ${total} violations (max: ${max}).`);
-      } else {
-        info(`User has ${total}/${max} violations — bidding active.`);
-      }
-    } catch {
-      error('Failed to review ban status.');
+      const r = await auctionViolationsApi.list();
+      setViolations(r.data);
     } finally {
-      setReviewing(null);
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => { load(); }, []); // eslint-disable-line
+
+  async function handleBan(v: AuctionViolation) {
+    const ok = await swal.confirm({
+      title: `Ban ${v.user_name}?`,
+      text: 'This will suspend their bidding privileges for the configured ban duration.',
+      confirmText: 'Ban User',
+    });
+    if (!ok) return;
+    setActioning(v.id);
+    try {
+      await auctionViolationsApi.banUser(v.id);
+      success(`${v.user_name} has been banned from bidding.`);
+      load();
+    } catch {
+      error('Failed to apply ban.');
+    } finally {
+      setActioning(null);
+    }
+  }
+
+  async function handleUnban(v: AuctionViolation) {
+    const ok = await swal.confirm({
+      title: `Lift ban for ${v.user_name}?`,
+      text: 'The user will be allowed to bid again immediately.',
+      confirmText: 'Lift Ban',
+    });
+    if (!ok) return;
+    setActioning(v.id);
+    try {
+      await auctionViolationsApi.unbanUser(v.id);
+      success(`Ban lifted for ${v.user_name}.`);
+      load();
+    } catch {
+      error('Failed to lift ban.');
+    } finally {
+      setActioning(null);
     }
   }
 
@@ -432,20 +461,20 @@ function ViolationsPanel({ canReview }: { canReview: boolean }) {
             <table className="w-full text-sm">
               <thead>
                 <tr className="bg-earth-50 border-b border-earth-100">
-                  {['User', 'Artwork', 'Bid Amount', 'Date', ''].map(h => (
+                  {['User', 'Artwork', 'Bid', 'Violations', 'Ban Status', 'Date', ''].map(h => (
                     <th key={h} className="text-left px-4 py-3 text-xs font-semibold text-earth-500 uppercase tracking-wide">{h}</th>
                   ))}
                 </tr>
               </thead>
               <tbody className="divide-y divide-earth-50">
                 {filtered.map(v => {
-                  const result = banResult[v.id];
+                  const banned = isBanned(v.user_banned_until);
                   return (
                     <tr key={v.id} className="hover:bg-earth-50 transition-colors">
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-2.5">
-                          <div className="w-8 h-8 bg-earth-100 rounded-full flex items-center justify-center shrink-0">
-                            <User size={14} className="text-earth-500" />
+                          <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${banned ? 'bg-red-100' : 'bg-earth-100'}`}>
+                            <User size={14} className={banned ? 'text-red-500' : 'text-earth-500'} />
                           </div>
                           <div>
                             <div className="font-semibold text-earth-900">{v.user_name}</div>
@@ -453,32 +482,58 @@ function ViolationsPanel({ canReview }: { canReview: boolean }) {
                           </div>
                         </div>
                       </td>
-                      <td className="px-4 py-3 text-earth-700">{v.artwork_name}</td>
-                      <td className="px-4 py-3 font-mono font-semibold text-earth-900">
+                      <td className="px-4 py-3 text-earth-700 max-w-[140px] truncate">{v.artwork_name}</td>
+                      <td className="px-4 py-3 font-mono font-semibold text-earth-900 text-xs">
                         {parseFloat(v.bid_amount).toLocaleString()}
                       </td>
-                      <td className="px-4 py-3 text-xs text-earth-500">{fmt(v.created_at)}</td>
                       <td className="px-4 py-3">
-                        <div className="flex items-center gap-3">
-                          {canReview && (
-                            <button
-                              onClick={() => reviewBan(v.id)}
-                              disabled={reviewing === v.id}
-                              className="flex items-center gap-1 text-xs font-semibold text-amber-700 bg-amber-50 hover:bg-amber-100 border border-amber-200 px-2.5 py-1.5 rounded-lg transition-colors disabled:opacity-50"
-                            >
-                              {reviewing === v.id ? <Spinner size="sm" /> : <Shield size={12} />}
-                              Check Ban
-                            </button>
-                          )}
-                          {result && (
-                            <span className={`flex items-center gap-1 text-xs font-semibold ${result.suspended ? 'text-red-600' : 'text-green-600'}`}>
-                              {result.suspended
-                                ? <><Ban size={12} /> Suspended</>
-                                : <><CheckCircle size={12} /> Active ({result.total}/{result.max})</>
-                              }
+                        <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold ${
+                          v.user_total_violations >= 3 ? 'bg-red-50 text-red-600' :
+                          v.user_total_violations >= 2 ? 'bg-amber-50 text-amber-600' :
+                          'bg-earth-100 text-earth-600'
+                        }`}>
+                          {v.user_total_violations} violation{v.user_total_violations !== 1 ? 's' : ''}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3">
+                        {banned ? (
+                          <div>
+                            <span className="flex items-center gap-1 text-xs font-semibold text-red-600">
+                              <Ban size={11} /> Banned
                             </span>
-                          )}
-                        </div>
+                            <span className="text-[10px] text-earth-400 mt-0.5 block">
+                              until {new Date(v.user_banned_until!).toLocaleDateString()}
+                            </span>
+                          </div>
+                        ) : (
+                          <span className="flex items-center gap-1 text-xs font-semibold text-green-600">
+                            <CheckCircle size={11} /> Active
+                          </span>
+                        )}
+                      </td>
+                      <td className="px-4 py-3 text-xs text-earth-500 whitespace-nowrap">{fmt(v.created_at)}</td>
+                      <td className="px-4 py-3">
+                        {canReview && (
+                          banned ? (
+                            <button
+                              onClick={() => handleUnban(v)}
+                              disabled={actioning === v.id}
+                              className="flex items-center gap-1 text-xs font-semibold text-green-700 bg-green-50 hover:bg-green-100 border border-green-200 px-2.5 py-1.5 rounded-lg transition-colors disabled:opacity-50 whitespace-nowrap"
+                            >
+                              {actioning === v.id ? <Spinner size="sm" /> : <CheckCircle size={12} />}
+                              Lift Ban
+                            </button>
+                          ) : (
+                            <button
+                              onClick={() => handleBan(v)}
+                              disabled={actioning === v.id}
+                              className="flex items-center gap-1 text-xs font-semibold text-red-700 bg-red-50 hover:bg-red-100 border border-red-200 px-2.5 py-1.5 rounded-lg transition-colors disabled:opacity-50 whitespace-nowrap"
+                            >
+                              {actioning === v.id ? <Spinner size="sm" /> : <Ban size={12} />}
+                              Ban User
+                            </button>
+                          )
+                        )}
                       </td>
                     </tr>
                   );

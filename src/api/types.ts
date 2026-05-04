@@ -125,11 +125,14 @@ export interface AuctionWinner {
 
 export interface AuctionViolation {
   id: number;
+  user_uuid: string;
   user_name: string;
   user_email: string;
   artwork_name: string;
   auction_uuid: string;
   bid_amount: string;
+  user_banned_until: string | null;
+  user_total_violations: number;
   created_at: string;
 }
 
@@ -381,8 +384,10 @@ export interface AdminUser {
   is_staff: boolean;
   is_active: boolean;
   verified_at: string | null;
+  bidding_banned_until: string | null;
   roles: string[];
   permissions: string[];
+  direct_permissions: Permission[];
   created_at: string;
 }
 

@@ -14,11 +14,11 @@ import { Logo } from '../ui/Logo';
 /* ─── Quick-Access Floating Radial FAB ───────────────────────────────────── */
 
 const FAB_ITEMS_BASE = [
-  { label: 'Auctions',  icon: Gavel,    to: '/dashboard/auctions',      grad: 'from-primary-600 to-primary-400' },
-  { label: 'Artworks',  icon: Image,    to: '/dashboard/artworks',      grad: 'from-blue-500    to-cyan-400'    },
-  { label: 'Orders',    icon: Package,  to: '/dashboard/orders',        grad: 'from-emerald-500 to-teal-400'    },
-  { label: 'Wallet',    icon: Wallet,   to: '/dashboard/wallet',        grad: 'from-violet-500  to-purple-400'  },
-  { label: 'Activity',  icon: Activity, to: '/dashboard/activity-logs', grad: 'from-amber-500   to-orange-400'  },
+  { label: 'Auctions',  icon: Gavel,    to: '/dashboard/auctions',      grad: 'from-primary-600 to-primary-400', permission: 'auctions.view_auction' },
+  { label: 'Artworks',  icon: Image,    to: '/dashboard/artworks',      grad: 'from-blue-500    to-cyan-400',    permission: 'artworks.view_artwork' },
+  { label: 'Orders',    icon: Package,  to: '/dashboard/orders',        grad: 'from-emerald-500 to-teal-400',    permission: 'orders.view_order' },
+  { label: 'Wallet',    icon: Wallet,   to: '/dashboard/wallet',        grad: 'from-violet-500  to-purple-400',  permission: 'wallet.view_wallet' },
+  { label: 'Activity',  icon: Activity, to: '/dashboard/activity-logs', grad: 'from-amber-500   to-orange-400',  permission: 'activity_logs.view_activitylog' },
 ];
 
 const FAB_R = 100; // ring radius px
@@ -34,13 +34,13 @@ function arcAngles(x: number, y: number): [number, number] {
 }
 
 function QuickFAB() {
-  const { isAdmin } = useAuth();
+  const { isAdmin, hasPermission } = useAuth();
 
   const items = [
-    ...FAB_ITEMS_BASE,
+    ...FAB_ITEMS_BASE.filter(item => !item.permission || hasPermission(item.permission)),
     isAdmin()
-      ? { label: 'Notifications', icon: Bell, to: '/dashboard/notifications', grad: 'from-red-500   to-rose-400'   }
-      : { label: 'Profile',       icon: User, to: '/dashboard/profile',       grad: 'from-sky-500  to-indigo-400' },
+      ? { label: 'Notifications', icon: Bell, to: '/dashboard/notifications', grad: 'from-red-500   to-rose-400',   permission: undefined }
+      : { label: 'Profile',       icon: User, to: '/dashboard/profile',       grad: 'from-sky-500  to-indigo-400',  permission: undefined },
   ];
 
   /* ── position state (top-left coords of FAB center) ── */
