@@ -19,16 +19,17 @@ interface ArtworkForm {
   category_uuid: string; is_sold: boolean;
 }
 
-type PendingFile = { file: File; preview: string; isPrimary: boolean };
+type PendingFile = { file: File; preview: string; isPrimary: boolean; description: string };
 
 const PAGE_SIZES = [10, 25, 50];
 
 // ── Image Manager (existing artwork) ──────────────────────────────────────────
 function ImageManager({ artworkUuid, onUpdated }: { artworkUuid: string; onUpdated: () => void }) {
-  const { error: showError } = useToast();
+  const { error: showError, success } = useToast();
   const [images, setImages] = useState<ArtworkImage[]>([]);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
+  const [savingDescriptionId, setSavingDescriptionId] = useState<number | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
   const fetchImages = useCallback(async () => {
@@ -49,6 +50,7 @@ function ImageManager({ artworkUuid, onUpdated }: { artworkUuid: string; onUpdat
       for (const file of Array.from(files)) {
         const fd = new FormData();
         fd.append('image', file);
+        fd.append('description', '');
         await artworksApi.uploadImage(artworkUuid, fd);
       }
       await fetchImages();
@@ -75,6 +77,21 @@ function ImageManager({ artworkUuid, onUpdated }: { artworkUuid: string; onUpdat
     } catch { showError('Failed to set primary image'); }
   };
 
+  const handleDescriptionChange = (id: number, description: string) => {
+    setImages(current => current.map(img => img.id === id ? { ...img, description } : img));
+  };
+
+  const handleSaveDescription = async (img: ArtworkImage) => {
+    setSavingDescriptionId(img.id);
+    try {
+      await artworksApi.updateImage(artworkUuid, img.id, { description: img.description });
+      await fetchImages();
+      onUpdated();
+      success('Photo description saved');
+    } catch { showError('Failed to save description'); }
+    finally { setSavingDescriptionId(null); }
+  };
+
   if (loading) return <div className="flex justify-center py-8"><Spinner size="lg" /></div>;
 
   return (
@@ -88,37 +105,62 @@ function ImageManager({ artworkUuid, onUpdated }: { artworkUuid: string; onUpdat
         onChange={e => handleUpload(e.target.files)}
       />
 
-      <div className="flex flex-wrap gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         {images.map(img => (
-          <div key={img.id} className="relative group">
-            <img
-              src={img.image_url ?? ''}
-              alt=""
-              className={`w-24 h-24 object-cover rounded-xl border-2 transition-all ${
-                img.is_primary ? 'border-primary-500' : 'border-earth-200'
-              }`}
-            />
-            {img.is_primary && (
-              <div className="absolute top-0 inset-x-0 text-center bg-primary-500 text-white text-[10px] font-bold rounded-t-xl py-0.5">
-                Primary
+          <div key={img.id} className="rounded-xl border border-earth-100 bg-earth-50 p-3 space-y-2">
+            <div className="flex gap-3">
+              <div className="relative group shrink-0">
+                <img
+                  src={img.image_url ?? ''}
+                  alt={img.description || 'Artwork photo'}
+                  className={`w-24 h-24 object-cover rounded-xl border-2 transition-all ${
+                    img.is_primary ? 'border-primary-500' : 'border-earth-200'
+                  }`}
+                />
+                {img.is_primary && (
+                  <div className="absolute top-0 inset-x-0 text-center bg-primary-500 text-white text-[10px] font-bold rounded-t-xl py-0.5">
+                    Primary
+                  </div>
+                )}
+                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 rounded-xl transition-opacity flex items-center justify-center gap-2">
+                  {!img.is_primary && (
+                    <button
+                      onClick={() => handleSetPrimary(img)}
+                      title="Set as primary"
+                      className="bg-white/90 hover:bg-white p-1.5 rounded-lg text-earth-900 transition-colors"
+                    >
+                      <Star size={12} />
+                    </button>
+                  )}
+                  <button
+                    onClick={() => handleDelete(img)}
+                    title="Delete"
+                    className="bg-red-500/90 hover:bg-red-500 p-1.5 rounded-lg text-white transition-colors"
+                  >
+                    <Trash2 size={12} />
+                  </button>
+                </div>
               </div>
-            )}
-            <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 rounded-xl transition-opacity flex items-center justify-center gap-2">
-              {!img.is_primary && (
-                <button
-                  onClick={() => handleSetPrimary(img)}
-                  title="Set as primary"
-                  className="bg-white/90 hover:bg-white p-1.5 rounded-lg text-earth-900 transition-colors"
-                >
-                  <Star size={12} />
-                </button>
-              )}
+              <div className="flex-1 min-w-0">
+                <label className="block text-[11px] font-semibold text-earth-500 uppercase tracking-wide mb-1">
+                  Photo Description
+                </label>
+                <textarea
+                  className="input w-full min-h-[72px] resize-y text-xs"
+                  placeholder="Describe this photo..."
+                  value={img.description || ''}
+                  onChange={e => handleDescriptionChange(img.id, e.target.value)}
+                />
+              </div>
+            </div>
+            <div className="flex justify-end">
               <button
-                onClick={() => handleDelete(img)}
-                title="Delete"
-                className="bg-red-500/90 hover:bg-red-500 p-1.5 rounded-lg text-white transition-colors"
+                type="button"
+                onClick={() => handleSaveDescription(img)}
+                disabled={savingDescriptionId === img.id}
+                className="px-3 py-1.5 rounded-lg bg-primary-600 hover:bg-primary-700 disabled:opacity-60 text-white text-xs font-semibold transition-colors"
               >
-                <Trash2 size={12} />
+                {savingDescriptionId === img.id ? 'Saving...' : 'Save Description'}
               </button>
             </div>
           </div>
@@ -162,6 +204,7 @@ function PendingImagePicker({ files, onChange }: {
       file,
       preview: URL.createObjectURL(file),
       isPrimary: files.length === 0 && i === 0,
+      description: '',
     }));
     onChange([...files, ...newFiles]);
   };
@@ -178,6 +221,10 @@ function PendingImagePicker({ files, onChange }: {
 
   const setPrimary = (idx: number) => {
     onChange(files.map((f, i) => ({ ...f, isPrimary: i === idx })));
+  };
+
+  const setDescription = (idx: number, description: string) => {
+    onChange(files.map((f, i) => i === idx ? { ...f, description } : f));
   };
 
   return (
@@ -207,29 +254,44 @@ function PendingImagePicker({ files, onChange }: {
         </button>
       ) : (
         <div className="space-y-2">
-          <div className="flex flex-wrap gap-2">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {files.map((pf, idx) => (
-              <div key={idx} className="relative group">
-                <img
-                  src={pf.preview}
-                  alt=""
-                  onClick={() => setPrimary(idx)}
-                  className={`w-20 h-20 object-cover rounded-xl border-2 cursor-pointer transition-all ${
-                    pf.isPrimary ? 'border-primary-500' : 'border-earth-200 hover:border-earth-300'
-                  }`}
-                />
-                {pf.isPrimary && (
-                  <div className="absolute top-0 inset-x-0 text-center bg-primary-500 text-white text-[10px] font-bold rounded-t-xl py-0.5">
-                    Primary
+              <div key={idx} className="rounded-xl border border-earth-100 bg-earth-50 p-3">
+                <div className="flex gap-3">
+                  <div className="relative group shrink-0">
+                    <img
+                      src={pf.preview}
+                      alt={pf.description || 'Selected artwork photo'}
+                      onClick={() => setPrimary(idx)}
+                      className={`w-20 h-20 object-cover rounded-xl border-2 cursor-pointer transition-all ${
+                        pf.isPrimary ? 'border-primary-500' : 'border-earth-200 hover:border-earth-300'
+                      }`}
+                    />
+                    {pf.isPrimary && (
+                      <div className="absolute top-0 inset-x-0 text-center bg-primary-500 text-white text-[10px] font-bold rounded-t-xl py-0.5">
+                        Primary
+                      </div>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => remove(idx)}
+                      className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-red-500 hover:bg-red-600 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                    >
+                      <X size={10} />
+                    </button>
                   </div>
-                )}
-                <button
-                  type="button"
-                  onClick={() => remove(idx)}
-                  className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-red-500 hover:bg-red-600 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
-                >
-                  <X size={10} />
-                </button>
+                  <div className="flex-1 min-w-0">
+                    <label className="block text-[11px] font-semibold text-earth-500 uppercase tracking-wide mb-1">
+                      Photo Description
+                    </label>
+                    <textarea
+                      className="input w-full min-h-[72px] resize-y text-xs"
+                      placeholder="Describe this photo..."
+                      value={pf.description}
+                      onChange={e => setDescription(idx, e.target.value)}
+                    />
+                  </div>
+                </div>
               </div>
             ))}
             <button
@@ -240,7 +302,7 @@ function PendingImagePicker({ files, onChange }: {
               <Plus size={20} className="text-earth-400" />
             </button>
           </div>
-          <p className="text-xs text-earth-400">Click an image to set it as primary</p>
+          <p className="text-xs text-earth-400">Click an image to set it as primary. Add a short description for each photo.</p>
         </div>
       )}
     </div>
@@ -355,6 +417,7 @@ export function ArtworksPage() {
       const pf = ordered[i];
       const fd = new FormData();
       fd.append('image', pf.file);
+      fd.append('description', pf.description);
       if (i === 0) fd.append('is_primary', 'true');
       await artworksApi.uploadImage(uuid, fd);
     }

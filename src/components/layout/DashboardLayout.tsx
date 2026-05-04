@@ -10,6 +10,7 @@ import {
 import { useAuth } from '../../context/AuthContext';
 import { profileApi, siteApi, cartApi } from '../../api';
 import { Logo } from '../ui/Logo';
+import { LanguageSelector } from '../ui/LanguageSelector';
 
 /* ─── Quick-Access Floating Radial FAB ───────────────────────────────────── */
 
@@ -314,6 +315,11 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
     navigate('/');
   };
 
+  const isNavActive = (to: string) => {
+    if (to === '/dashboard') return location.pathname === to;
+    return location.pathname === to || location.pathname.startsWith(`${to}/`);
+  };
+
   const SidebarContent = () => (
     <div className="flex flex-col h-full">
       {/* Logo */}
@@ -353,7 +359,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
       <nav className="flex-1 p-3 space-y-1 overflow-y-auto">
         {visibleNav.map(item => {
           const Icon = item.icon;
-          const active = location.pathname === item.to;
+          const active = isNavActive(item.to);
           return (
             <Link
               key={item.to}
@@ -439,6 +445,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
           <Link to="/" className="text-sm text-earth-500 hover:text-earth-700 transition-colors">
             ← Back to site
           </Link>
+          <LanguageSelector />
         </header>
 
         {/* Page content */}

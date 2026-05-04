@@ -5,7 +5,7 @@ import {
   Download, Wand2,
 } from 'lucide-react';
 import { siteApi } from '../../api';
-import type { ArtistProfile, ContactInfo, Exhibition, HeroContent, LandingHero } from '../../api/types';
+import type { ArtistProfile, ContactInfo, Exhibition, HeroContent, LandingHero, LanguageConfig } from '../../api/types';
 import { useToast } from '../../components/ui/Toast';
 import { swal } from '../../lib/swal';
 import { Spinner, SectionSpinner } from '../../components/ui/Spinner';
@@ -588,6 +588,119 @@ function ContactInfoCard() {
   );
 }
 
+// ── Language Config section ──────────────────────────────────────────────────
+
+function LanguageConfigCard() {
+  const { error } = useToast();
+  const [config, setConfig] = useState<LanguageConfig | null>(null);
+  const [enabled, setEnabled] = useState<string[]>([]);
+  const [defaultLanguage, setDefaultLanguage] = useState('EN');
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    siteApi.getLanguages()
+      .then(r => {
+        setConfig(r.data);
+        setEnabled(r.data.enabled_languages);
+        setDefaultLanguage(r.data.default_language);
+      })
+      .catch(() => error('Failed to load languages.'))
+      .finally(() => setLoading(false));
+  }, []); // eslint-disable-line
+
+  const toggleLanguage = (code: string) => {
+    setEnabled(current => {
+      if (current.includes(code)) {
+        const next = current.filter(item => item !== code);
+        if (next.length === 0) return current;
+        if (defaultLanguage === code) setDefaultLanguage(next[0]);
+        return next;
+      }
+      return [...current, code];
+    });
+  };
+
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      const res = await siteApi.updateLanguages({ enabled_languages: enabled, default_language: defaultLanguage });
+      setConfig(res.data);
+      setEnabled(res.data.enabled_languages);
+      setDefaultLanguage(res.data.default_language);
+      swal.success('Languages updated!');
+    } catch { error('Failed to update languages.'); }
+    finally { setSaving(false); }
+  };
+
+  if (loading) return <SectionSpinner />;
+  if (!config) return null;
+
+  return (
+    <div className="bg-white rounded-2xl border border-earth-100 shadow-sm overflow-hidden">
+      <SectionHeader
+        icon={Globe}
+        title="Languages"
+        action={
+          <button
+            onClick={handleSave}
+            disabled={saving}
+            className="flex items-center gap-1.5 text-xs font-semibold text-white bg-primary-600 hover:bg-primary-700 disabled:opacity-50 px-3 py-1.5 rounded-lg transition-colors"
+          >
+            {saving ? <Spinner size="sm" /> : <Save size={12} />}
+            {saving ? 'Saving...' : 'Save'}
+          </button>
+        }
+      />
+      <div className="p-5 space-y-4">
+        <div>
+          <label className="block text-xs text-earth-500 mb-1">Default Language</label>
+          <select
+            className="input w-full text-sm"
+            value={defaultLanguage}
+            onChange={e => setDefaultLanguage(e.target.value)}
+          >
+            {config.available_languages
+              .filter(lang => enabled.includes(lang.code))
+              .map(lang => (
+                <option key={lang.code} value={lang.code}>{lang.name} - {lang.code}</option>
+              ))}
+          </select>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+          {config.available_languages.map(lang => {
+            const checked = enabled.includes(lang.code);
+            return (
+              <label
+                key={lang.code}
+                className={`flex items-center justify-between gap-3 rounded-xl border px-3 py-2.5 cursor-pointer transition-colors ${
+                  checked ? 'border-primary-200 bg-primary-50' : 'border-earth-100 bg-earth-50 hover:border-earth-200'
+                }`}
+              >
+                <span className="min-w-0">
+                  <span className="block text-sm font-medium text-earth-800 truncate">{lang.name}</span>
+                  <span className="block text-[11px] font-semibold text-earth-400 uppercase">{lang.code}</span>
+                </span>
+                <input
+                  type="checkbox"
+                  checked={checked}
+                  onChange={() => toggleLanguage(lang.code)}
+                  className="w-4 h-4 rounded accent-primary-600 shrink-0"
+                />
+              </label>
+            );
+          })}
+        </div>
+
+        <p className="text-xs text-earth-400">
+          Enabled: {enabled.length} of {config.available_languages.length}
+        </p>
+      </div>
+    </div>
+  );
+}
+
 // ── Artist Profile section ────────────────────────────────────────────────────
 
 function ArtistCard() {
@@ -869,11 +982,11 @@ export function SiteConfigPage() {
           <div className="flex-1 text-center sm:text-left">
             <Logo variant="light" className="h-6 w-auto mb-1 mx-auto sm:mx-0" />
             <h2 className="text-xl font-bold text-white">Site Configuration</h2>
-            <p className="text-white/70 text-sm mt-0.5">Manage the public landing page content, contact info, and artist profile.</p>
+            <p className="text-white/70 text-sm mt-0.5">Manage the public landing page content, contact info, languages, and artist profile.</p>
           </div>
           <div className="flex gap-3 shrink-0">
             {[
-              { label: 'Sections', value: '4' },
+              { label: 'Sections', value: '5' },
             ].map(({ label, value }) => (
               <div key={label} className="bg-white/10 backdrop-blur-sm rounded-xl px-4 py-2.5 text-center">
                 <p className="text-xl font-bold text-white">{value}</p>
@@ -896,6 +1009,7 @@ export function SiteConfigPage() {
         <div className="lg:col-span-2 space-y-6">
           <HeroTextCard />
           <ContactInfoCard />
+          <LanguageConfigCard />
         </div>
 
         {/* Right column */}

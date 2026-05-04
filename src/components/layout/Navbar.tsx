@@ -6,6 +6,7 @@ import { useTheme } from '../../context/ThemeContext';
 import { useState, useEffect } from 'react';
 import { Logo } from '../ui/Logo';
 import { cartApi } from '../../api';
+import { LanguageSelector } from '../ui/LanguageSelector';
 
 interface NavbarProps {
   scrollAware?: boolean;
@@ -98,6 +99,7 @@ export function Navbar({ scrollAware = false }: NavbarProps) {
           {/* Actions */}
           <div className="flex items-center gap-2">
             {/* Theme toggle */}
+            <LanguageSelector transparent={isTransparent} />
             <button
               onClick={toggle}
               className={`p-2 rounded-lg transition-colors ${

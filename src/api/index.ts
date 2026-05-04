@@ -1,5 +1,5 @@
 import api from './client';
-import type { Paginated, Artwork, ArtworkImage, Category, Currency, Auction, AuctionImage, AuctionConfig, AuctionWinner, AuctionViolation, Cart, Order, Profile, Wallet, ActivityLog, TokenResponse, User, Role, Permission, AdminUser, HeroContent, LandingHero, ContactInfo, ContactMessage, ArtistProfile, Exhibition, AdminWallet, BlockedIP, BlockedDevice, SecurityStats, SecurityConfig, RateLimitViolation, ErrorRequestLog, Address, NotificationLog, PaymentMethod, PaymentTransaction, InitiatePaymentResponse } from './types';
+import type { Paginated, Artwork, ArtworkImage, Category, Currency, Auction, AuctionImage, AuctionConfig, AuctionWinner, AuctionViolation, Cart, Order, Profile, Wallet, ActivityLog, TokenResponse, User, Role, Permission, AdminUser, HeroContent, LandingHero, ContactInfo, LanguageConfig, ContactMessage, ArtistProfile, Exhibition, AdminWallet, BlockedIP, BlockedDevice, SecurityStats, SecurityConfig, RateLimitViolation, ErrorRequestLog, Address, NotificationLog, PaymentMethod, PaymentTransaction, InitiatePaymentResponse } from './types';
 
 // Auth
 export const authApi = {
@@ -41,6 +41,8 @@ export const artworksApi = {
     api.get<ArtworkImage[]>(`/api/artworks/${uuid}/images/`),
   uploadImage: (uuid: string, data: FormData) =>
     api.post<ArtworkImage>(`/api/artworks/${uuid}/images/`, data, { headers: { 'Content-Type': undefined } }),
+  updateImage: (uuid: string, id: number, data: Partial<Pick<ArtworkImage, 'description' | 'is_primary' | 'order'>>) =>
+    api.patch<ArtworkImage>(`/api/artworks/${uuid}/images/${id}/`, data),
   deleteImage: (uuid: string, id: number) =>
     api.delete(`/api/artworks/${uuid}/images/${id}/`),
   setPrimaryImage: (uuid: string, id: number) =>
@@ -247,6 +249,11 @@ export const siteApi = {
   getContactInfo: () => api.get<ContactInfo>('/api/site/contact-info/'),
   updateContactInfo: (data: Partial<ContactInfo>) =>
     api.patch<ContactInfo>('/api/site/contact-info/', data),
+
+  // Languages
+  getLanguages: () => api.get<LanguageConfig>('/api/site/languages/'),
+  updateLanguages: (data: Partial<Pick<LanguageConfig, 'enabled_languages' | 'default_language'>>) =>
+    api.patch<LanguageConfig>('/api/site/languages/', data),
 
   // Contact messages
   submitContact: (data: { name: string; email: string; subject: string; message: string }) =>

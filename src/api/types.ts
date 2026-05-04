@@ -35,6 +35,7 @@ export interface ArtworkPricing {
 export interface ArtworkImage {
   id: number;
   image_url: string | null;
+  description: string;
   is_primary: boolean;
   order: number;
   created_at: string;
@@ -134,6 +135,18 @@ export interface AuctionViolation {
   user_banned_until: string | null;
   user_total_violations: number;
   created_at: string;
+}
+
+export interface LanguageOption {
+  code: string;
+  name: string;
+}
+
+export interface LanguageConfig {
+  available_languages: LanguageOption[];
+  enabled_languages: string[];
+  default_language: string;
+  updated_at: string;
 }
 
 export interface BlockedIP {

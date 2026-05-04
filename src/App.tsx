@@ -6,6 +6,7 @@ import { siteApi } from './api';
 import { AuthModalProvider } from './context/AuthModalContext';
 import { ToastProvider } from './components/ui/Toast';
 import { ThemeProvider } from './context/ThemeContext';
+import { LanguageProvider } from './context/LanguageContext';
 import { LoadingBar } from './components/ui/LoadingBar';
 import { ProtectedRoute } from './components/layout/ProtectedRoute';
 import { DashboardLayout } from './components/layout/DashboardLayout';
@@ -130,6 +131,7 @@ export default function App() {
   return (
     <BrowserRouter>
       <ThemeProvider>
+      <LanguageProvider>
       <AuthProvider>
         <ToastProvider>
         <LoadingBar />
@@ -199,6 +201,7 @@ export default function App() {
         </AuthModalProvider>
         </ToastProvider>
       </AuthProvider>
+      </LanguageProvider>
       </ThemeProvider>
     </BrowserRouter>
   );

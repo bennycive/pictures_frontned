@@ -130,10 +130,17 @@ export function ArtworkDetailPage() {
   const year = artwork.created_at ? new Date(artwork.created_at).getFullYear() : null;
 
   // Build ordered image list: primary first, then rest
-  const allImages: string[] = [];
-  if (artwork.primary_image) allImages.push(artwork.primary_image);
-  artwork.images?.forEach(img => { if (img.image_url && img.image_url !== artwork.primary_image) allImages.push(img.image_url); });
-  if (allImages.length === 0 && artwork.image_url) allImages.push(artwork.image_url);
+  const allImages: { src: string; description: string }[] = [];
+  const primaryRecord = artwork.images?.find(img => img.image_url === artwork.primary_image);
+  if (artwork.primary_image) {
+    allImages.push({ src: artwork.primary_image, description: primaryRecord?.description || '' });
+  }
+  artwork.images?.forEach(img => {
+    if (img.image_url && img.image_url !== artwork.primary_image) {
+      allImages.push({ src: img.image_url, description: img.description || '' });
+    }
+  });
+  if (allImages.length === 0 && artwork.image_url) allImages.push({ src: artwork.image_url, description: '' });
   const safeIdx = Math.min(activeIdx, Math.max(0, allImages.length - 1));
   const activeImage = allImages[safeIdx] ?? null;
 
@@ -161,8 +168,8 @@ export function ArtworkDetailPage() {
             <div className="relative rounded-2xl overflow-hidden bg-earth-100 dark:bg-earth-800 shadow-lg aspect-[4/5] select-none">
               {activeImage ? (
                 <img
-                  src={activeImage}
-                  alt={artwork.name}
+                  src={activeImage.src}
+                  alt={activeImage.description || artwork.name}
                   draggable={false}
                   onContextMenu={e => e.preventDefault()}
                   className={`w-full h-full object-cover pointer-events-none ${artwork.is_sold ? 'brightness-75' : ''}`}
@@ -224,7 +231,7 @@ export function ArtworkDetailPage() {
             {/* Thumbnail strip */}
             {allImages.length > 1 && (
               <div className="flex gap-2 overflow-x-auto pb-1">
-                {allImages.map((src, i) => (
+                {allImages.map((img, i) => (
                   <button
                     key={i}
                     onClick={() => setActiveIdx(i)}
@@ -232,9 +239,15 @@ export function ArtworkDetailPage() {
                       safeIdx === i ? 'border-primary-500' : 'border-earth-200 hover:border-earth-300 dark:border-earth-700'
                     }`}
                   >
-                    <img src={src} alt={`${artwork.name} ${i + 1}`} className="w-full h-full object-cover" />
+                    <img src={img.src} alt={img.description || `${artwork.name} ${i + 1}`} className="w-full h-full object-cover" />
                   </button>
                 ))}
+              </div>
+            )}
+            {activeImage?.description && (
+              <div className="rounded-xl border border-earth-100 dark:border-earth-800 bg-white dark:bg-earth-900 px-4 py-3">
+                <p className="text-[10px] font-semibold text-earth-400 uppercase tracking-widest mb-1">Photo Description</p>
+                <p className="text-sm leading-relaxed text-earth-700 dark:text-earth-300">{activeImage.description}</p>
               </div>
             )}
 

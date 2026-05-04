@@ -95,3 +95,17 @@
   pointer-events: none;
   z-index: 1;
 }
+body > .skiptranslate,
+.goog-te-banner-frame,
+.goog-te-gadget,
+#goog-gt-tt {
+  display: none !important;
+}
+
+body {
+  top: 0 !important;
+}
+
+.goog-te-combo {
+  display: none !important;
+}
